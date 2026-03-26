@@ -2,10 +2,15 @@
   "name": "multisystems-img-generator",
   "private": true,
   "scripts": {
+    "backend": "cd backend && python3 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000",
     "dev": "npm run dev --prefix frontend",
+    "dev:all": "concurrently -k -n api,web -c blue,magenta \"npm run backend\" \"npm run dev --prefix frontend\"",
     "build": "npm run build --prefix frontend",
     "lint": "npm run lint --prefix frontend",
     "preview": "npm run preview --prefix frontend",
     "install-frontend": "npm install --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

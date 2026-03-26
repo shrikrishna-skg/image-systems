@@ -1,12 +1,20 @@
-.PHONY: help dev frontend backend install-frontend
+.PHONY: help dev frontend backend stack install-frontend install-root
 
 help:
 	@echo "Targets:"
-	@echo "  make dev             - Start Vite (same as: cd frontend && npm run dev)"
-	@echo "  make backend         - Start FastAPI on http://127.0.0.1:8000"
+	@echo "  make stack           - API + Vite together (needs: make install-root once)"
+	@echo "  make dev             - Vite only (needs: make backend in another terminal)"
+	@echo "  make backend         - FastAPI on http://127.0.0.1:8000"
 	@echo "  make install-frontend - npm install inside frontend/"
+	@echo "  make install-root    - npm install at repo root (for dev:all / stack)"
 	@echo ""
-	@echo "Uploads need BOTH: make backend (terminal 1) and make dev (terminal 2)."
+	@echo "Fix ECONNREFUSED 127.0.0.1:8000: run make backend OR make stack."
+
+stack:
+	npm run dev:all
+
+install-root:
+	npm install
 
 dev: frontend
 
