@@ -1,5 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
+
+
+class ImageVersionResponse(BaseModel):
+    id: str
+    version_type: str
+    width: Optional[int] = None
+    height: Optional[int] = None
+    file_size_bytes: Optional[int] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    scale_factor: Optional[float] = None
+    processing_cost_usd: Optional[float] = None
+    created_at: str
+
+    model_config = {"from_attributes": True}
 
 
 class ImageUploadResponse(BaseModel):
@@ -10,6 +25,7 @@ class ImageUploadResponse(BaseModel):
     file_size_bytes: Optional[int] = None
     mime_type: Optional[str] = None
     created_at: str
+    versions: List[ImageVersionResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -46,21 +62,6 @@ class FullPipelineRequest(BaseModel):
     scale_factor: int = 2
     target_resolution: Optional[str] = "4k"
     output_format: str = "png"
-
-
-class ImageVersionResponse(BaseModel):
-    id: str
-    version_type: str
-    width: Optional[int] = None
-    height: Optional[int] = None
-    file_size_bytes: Optional[int] = None
-    provider: Optional[str] = None
-    model: Optional[str] = None
-    scale_factor: Optional[float] = None
-    processing_cost_usd: Optional[float] = None
-    created_at: str
-
-    model_config = {"from_attributes": True}
 
 
 class ImageDetailResponse(BaseModel):
