@@ -2,18 +2,23 @@ import { useEffect, useRef, useCallback } from "react";
 import { getJob } from "../api/jobs";
 import { getImage } from "../api/images";
 import { useImageStore } from "../stores/imageStore";
-import type { JobInfo } from "../types";
+
+/** Tight loop while jobs run — first check is immediate (no 2s blind wait). */
+const POLL_MS = 1000;
 
 export function useJobPolling() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { currentJob, setCurrentJob, setCurrentImage, currentImage } = useImageStore();
+  const inFlightRef = useRef(false);
+  const { setCurrentJob, setCurrentImage } = useImageStore();
 
   const startPolling = useCallback(
-    (jobId: string) => {
-      // Clear any existing interval
+    (jobId: string, imageId: string) => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = null;
 
-      intervalRef.current = setInterval(async () => {
+      const pollOnce = async () => {
+        if (inFlightRef.current) return;
+        inFlightRef.current = true;
         try {
           const job = await getJob(jobId);
           setCurrentJob(job);
@@ -22,20 +27,25 @@ export function useJobPolling() {
             if (intervalRef.current) clearInterval(intervalRef.current);
             intervalRef.current = null;
 
-            // Refresh image data to get new versions
-            if (job.status === "completed" && currentImage) {
-              const updatedImage = await getImage(currentImage.id);
+            if (job.status === "completed") {
+              const updatedImage = await getImage(imageId);
               setCurrentImage(updatedImage);
+              useImageStore.getState().upsertSessionImage(updatedImage);
             }
           }
         } catch (err) {
           console.error("Polling error:", err);
           if (intervalRef.current) clearInterval(intervalRef.current);
           intervalRef.current = null;
+        } finally {
+          inFlightRef.current = false;
         }
-      }, 2000);
+      };
+
+      void pollOnce();
+      intervalRef.current = setInterval(() => void pollOnce(), POLL_MS);
     },
-    [setCurrentJob, setCurrentImage, currentImage]
+    [setCurrentJob, setCurrentImage]
   );
 
   const stopPolling = useCallback(() => {
@@ -51,5 +61,5 @@ export function useJobPolling() {
     };
   }, []);
 
-  return { startPolling, stopPolling, currentJob };
+  return { startPolling, stopPolling };
 }

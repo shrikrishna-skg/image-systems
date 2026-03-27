@@ -8,8 +8,15 @@ from app.config import settings
 
 class StorageService:
     def __init__(self):
-        self.upload_dir = Path(settings.UPLOAD_DIR)
-        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        self.upload_dir = settings.upload_dir_path
+        try:
+            self.upload_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            raise RuntimeError(
+                f"Cannot create UPLOAD_DIR ({self.upload_dir}). "
+                f"In backend/.env set UPLOAD_DIR=./uploads (do not copy absolute paths from another Mac/user). "
+                f"Original error: {e}"
+            ) from e
 
     def _get_user_dir(self, user_id: str) -> Path:
         user_dir = self.upload_dir / user_id
@@ -28,9 +35,10 @@ class StorageService:
         filename = self._generate_filename(file.filename, prefix="orig_")
         file_path = user_dir / filename
 
+        chunk_size = max(64 * 1024, settings.UPLOAD_READ_CHUNK_BYTES)
         file_size = 0
         async with aiofiles.open(file_path, "wb") as f:
-            while chunk := await file.read(1024 * 1024):  # 1MB chunks
+            while chunk := await file.read(chunk_size):
                 await f.write(chunk)
                 file_size += len(chunk)
 

@@ -1,11 +1,112 @@
 @import "tailwindcss";
 
+/* Monochrome UI — white surfaces, black ink, neutral grays only.
+ * Card depth follows ~2020 Apple marketing: hairline borders, no heavy drop shadows. */
+:root {
+  --app-surface: #ffffff;
+  --app-ink: #000000;
+  --app-muted: #737373;
+  --app-accent: #000000;
+  --app-accent-soft: #f5f5f5;
+  --font-data: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+.font-data {
+  font-family: var(--font-data);
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  color: var(--app-ink);
+  background: var(--app-surface);
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* Sonner: frosted panel, very light edge (not a heavy “floating card” shadow) */
+[data-sonner-toaster] {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+}
+
+[data-sonner-toast][data-mounted="true"] {
+  animation: sonner-toast-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Bottom-right stack: enter from below (matches Toaster position in App.tsx) */
+@keyframes sonner-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toast][data-mounted="true"] {
+    animation: none;
+  }
+}
+
+/* Apple.com-style corner sonar — neutral, low-contrast, infinite ripple */
+@keyframes sonar-ambient-expand {
+  0% {
+    transform: scale(0.12);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.32;
+  }
+  45% {
+    opacity: 0.1;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.sonar-ambient__ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(0 0 0 / 0.06);
+  background: radial-gradient(circle, rgb(0 0 0 / 0.035) 0%, transparent 70%);
+  box-shadow:
+    0 0 20px rgb(0 0 0 / 0.03),
+    inset 0 0 12px rgb(255 255 255 / 0.5);
+  animation: sonar-ambient-expand 4.5s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.sonar-ambient__core {
+  position: relative;
+  z-index: 1;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.18);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.9),
+    0 0 12px rgb(0 0 0 / 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sonar-ambient__ring {
+    animation: none;
+    opacity: 0.12;
+    transform: scale(0.85);
+  }
 }

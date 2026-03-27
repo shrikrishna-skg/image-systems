@@ -5,15 +5,28 @@ __pycache__/
 .venv/
 venv/
 
-# Environment files
+# Environment & secrets — never commit (use GitHub → Settings → Secrets for CI/CD)
 .env
+.env.*
+!.env.example
+!**/.env.example
 .env.local
 .env.production
+.env.development.local
+.env.test.local
+.envrc
+*.pem
+.id_rsa
+*secret*.json
 
 # Build output
 dist/
 build/
 .vite/
+
+# Local-only SQLite (LOCAL_DEV_MODE)
+backend/local.db
+backend/*.db
 
 # Uploads
 uploads/

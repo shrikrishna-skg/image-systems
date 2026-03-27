@@ -1,27 +1,83 @@
 import io
 from PIL import Image
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
+
+_EXT_TO_MIME = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".jpe": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".tiff": "image/tiff",
+    ".tif": "image/tiff",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+    ".ico": "image/x-icon",
+    ".avif": "image/avif",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
+    ".jxl": "image/jxl",
+    ".svg": "image/svg+xml",
+    ".psd": "image/vnd.adobe.photoshop",
+    ".jp2": "image/jp2",
+    ".j2k": "image/jp2",
+    ".cr2": "image/x-canon-cr2",
+    ".nef": "image/x-nikon-nef",
+    ".arw": "image/x-sony-arw",
+    ".dng": "image/x-adobe-dng",
+}
+
+_FORMAT_TO_MIME = {
+    "JPEG": "image/jpeg",
+    "PNG": "image/png",
+    "WEBP": "image/webp",
+    "TIFF": "image/tiff",
+    "GIF": "image/gif",
+    "BMP": "image/bmp",
+    "ICO": "image/x-icon",
+    "AVIF": "image/avif",
+    "HEIC": "image/heic",
+    "HEIF": "image/heif",
+    "SVG": "image/svg+xml",
+    "PSD": "image/vnd.adobe.photoshop",
+    "JPEG2000": "image/jp2",
+    "MPO": "image/jpeg",
+}
 
 
 def get_image_dimensions(file_path: str) -> tuple[int, int]:
-    """Get width and height of an image."""
+    """Get width and height. Runs in a thread from the API; PIL reads headers first for common formats."""
     with Image.open(file_path) as img:
         return img.size
 
 
+def probe_stored_image(file_path: str) -> Tuple[int, int, str]:
+    """Single PIL open: dimensions + MIME. Deletes are handled by caller on failure."""
+    path = Path(file_path)
+    with Image.open(file_path) as im:
+        im.load()
+        w, h = im.size
+        fmt = (im.format or "").upper()
+    if fmt in _FORMAT_TO_MIME:
+        mime = _FORMAT_TO_MIME[fmt]
+    else:
+        mime = _EXT_TO_MIME.get(path.suffix.lower(), "application/octet-stream")
+    return w, h, mime
+
+
 def get_mime_type(file_path: str) -> str:
-    """Get MIME type based on file extension."""
-    ext = Path(file_path).suffix.lower()
-    mime_map = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-        ".tiff": "image/tiff",
-        ".tif": "image/tiff",
-    }
-    return mime_map.get(ext, "image/jpeg")
+    """MIME from extension, else PIL format sniff (header-only where possible)."""
+    path = Path(file_path)
+    ext = path.suffix.lower()
+    if ext in _EXT_TO_MIME:
+        return _EXT_TO_MIME[ext]
+    try:
+        with Image.open(file_path) as im:
+            fmt = (im.format or "").upper()
+        return _FORMAT_TO_MIME.get(fmt, "image/jpeg")
+    except Exception:
+        return "image/jpeg"
 
 
 def resize_for_api(file_path: str, max_dimension: int = 1536) -> bytes:

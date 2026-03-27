@@ -1,14 +1,29 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import toast, { Toaster, ToastBar } from "react-hot-toast";
+import { Toaster } from "sonner";
+import { isStorageOnlyMode } from "./lib/storageOnlyMode";
 import { useAuthStore } from "./stores/authStore";
+
+const storageOnlyApp = isStorageOnlyMode();
 import AppShell from "./components/layout/AppShell";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import DashboardPage from "./pages/DashboardPage";
-import SettingsPage from "./pages/SettingsPage";
-import HistoryPage from "./pages/HistoryPage";
 import { Loader2 } from "lucide-react";
+
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-black" aria-hidden />
+    </div>
+  );
+}
+import FullscreenExitPortal from "./components/media/FullscreenExitPortal";
+import { useAdaptiveExperienceStore } from "./stores/adaptiveExperienceStore";
+import { useImageStore } from "./stores/imageStore";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -16,7 +31,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-black" />
       </div>
     );
   }
@@ -35,52 +50,67 @@ function App() {
     loadUser();
   }, [loadUser]);
 
+  useEffect(() => {
+    const tier = useAdaptiveExperienceStore.getState().experienceTier;
+    useImageStore.getState().applyPipelineExperienceTier(tier);
+  }, []);
+
   return (
     <BrowserRouter>
+      <FullscreenExitPortal />
       <Toaster
-        position="top-right"
+        position="bottom-right"
+        theme="light"
+        closeButton
+        offset={24}
+        gap={14}
+        visibleToasts={4}
         toastOptions={{
-          duration: 4000,
-          style: {
-            borderRadius: "14px",
-            background: "#1c1c1e",
-            color: "#fff",
-            padding: "12px 16px",
-            fontSize: "14px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
-            maxWidth: "380px",
+          duration: 5000,
+          classNames: {
+            toast:
+              "group pointer-events-auto flex w-[min(94vw,28rem)] items-start gap-4 rounded-[20px] border border-black/[0.08] bg-white/85 p-5 pr-12 !shadow-none backdrop-blur-2xl backdrop-saturate-[180%]",
+            title:
+              "text-[15px] font-semibold leading-snug tracking-[-0.015em] text-neutral-900 [font-family:-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Segoe_UI',system-ui,sans-serif]",
+            description:
+              "text-[13px] leading-[1.45] text-neutral-600 mt-1.5 [font-family:-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Segoe_UI',system-ui,sans-serif]",
+            success: "!border-emerald-400/35 !bg-emerald-50/50",
+            error: "!border-red-400/35 !bg-red-50/45",
+            warning: "!border-amber-400/35 !bg-amber-50/45",
+            closeButton:
+              "absolute right-3 top-3 h-8 w-8 border-0 bg-black/[0.04] text-neutral-500 hover:text-neutral-900 hover:bg-black/[0.07] rounded-full transition-colors",
+            icon: "mt-0.5 size-[22px]",
           },
         }}
-      >
-        {(t) => (
-          <ToastBar toast={t} style={{ ...t.style, padding: 0 }}>
-            {({ icon, message }) => (
-              <div className="flex items-center gap-2 w-full">
-                {icon}
-                <div className="flex-1">{message}</div>
-                <button
-                  onClick={() => toast.dismiss(t.id)}
-                  className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
-                  aria-label="Dismiss"
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="1" y1="1" x2="9" y2="9" />
-                    <line x1="9" y1="1" x2="1" y2="9" />
-                  </svg>
-                </button>
-              </div>
-            )}
-          </ToastBar>
-        )}
-      </Toaster>
+      />
       <Routes>
         <Route
           path="/login"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
+          element={
+            storageOnlyApp ? (
+              <Navigate to="/" replace />
+            ) : isAuthenticated ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Suspense fallback={<RouteFallback />}>
+                <LoginPage />
+              </Suspense>
+            )
+          }
         />
         <Route
           path="/register"
-          element={isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />}
+          element={
+            storageOnlyApp ? (
+              <Navigate to="/" replace />
+            ) : isAuthenticated ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Suspense fallback={<RouteFallback />}>
+                <RegisterPage />
+              </Suspense>
+            )
+          }
         />
         <Route
           path="/"
@@ -90,9 +120,30 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<DashboardPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="history" element={<HistoryPage />} />
+          <Route
+            index
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <DashboardPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <SettingsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="history"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <HistoryPage />
+              </Suspense>
+            }
+          />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

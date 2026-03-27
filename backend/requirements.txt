@@ -6,9 +6,11 @@ python-multipart>=0.0.18
 # Supabase
 supabase>=2.0.0
 
-# Database (Supabase PostgreSQL)
+# Database (PostgreSQL or local SQLite via LOCAL_DEV_MODE)
 sqlalchemy[asyncio]>=2.0.36
 asyncpg>=0.30.0
+psycopg[binary]>=3.2.0
+aiosqlite>=0.20.0
 alembic>=1.14.0
 
 # JWT verification

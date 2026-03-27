@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
-import { Sparkles } from "lucide-react";
-import toast from "react-hot-toast";
+import { Sparkles, Building2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,45 +17,64 @@ export default function LoginPage() {
     try {
       await login(email, password);
       navigate("/");
-    } catch (err: any) {
-      toast.error(err.message || "Login failed");
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Login failed";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="w-10 h-10 text-indigo-600" />
-            <h1 className="text-3xl font-bold text-gray-900">ImageEnhance Pro</h1>
+          <div className="inline-flex items-center justify-center gap-3 mb-5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black text-white ring-1 ring-black/10">
+              <Sparkles className="w-6 h-6" strokeWidth={2} />
+            </div>
+            <div className="text-left">
+              <h1 className="text-2xl font-semibold tracking-tight text-black">ImageEnhance Pro</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mt-0.5">
+                Listing studio
+              </p>
+            </div>
           </div>
-          <p className="text-gray-600">AI-powered hotel & real estate photo enhancement</p>
+          <p className="text-neutral-600 text-sm leading-relaxed max-w-sm mx-auto flex items-start justify-center gap-2">
+            <Building2 className="w-4 h-4 text-black shrink-0 mt-0.5" strokeWidth={2} />
+            <span>
+              Sign in to save API keys, run cloud enhancement, and keep a history of listing-ready
+              versions.
+            </span>
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Sign in</h2>
+        <div className="bg-white rounded-2xl border border-neutral-200/90 p-8">
+          <h2 className="text-lg font-semibold text-black mb-6">Sign in</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                placeholder="you@example.com"
+                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-400 focus:border-black outline-none transition-colors"
+                placeholder="you@hotel.com"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-400 focus:border-black outline-none transition-colors"
                 placeholder="••••••••"
                 required
               />
@@ -63,14 +82,17 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              className="w-full py-3 bg-black text-white rounded-xl font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-all"
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link to="/register" className="text-indigo-600 font-medium hover:text-indigo-500">
+          <p className="mt-6 text-center text-sm text-neutral-600">
+            Don&apos;t have an account?{" "}
+            <Link
+              to="/register"
+              className="text-black font-semibold underline-offset-2 hover:underline"
+            >
               Create one
             </Link>
           </p>

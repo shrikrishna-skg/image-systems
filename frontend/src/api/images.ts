@@ -1,17 +1,53 @@
 import client from "./client";
+import { mapPool } from "../lib/asyncPool";
+import { NETWORK_CHUNK_FILES, NETWORK_UPLOAD_CONCURRENCY } from "../lib/ingestConfig";
 import type { ImageInfo, JobInfo, FullPipelineRequest, CostEstimate, Presets } from "../types";
 
-export const uploadImages = async (files: File[]) => {
+async function uploadImagesMultipart(files: File[]): Promise<ImageInfo[]> {
+  if (files.length === 0) return [];
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));
   const res = await client.post<ImageInfo[]>("/images/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 600_000,
   });
   return res.data;
-};
+}
+
+/**
+ * Multipart batches with bounded concurrent requests — better throughput on high-latency links than one huge body.
+ */
+export async function uploadImages(files: File[]): Promise<ImageInfo[]> {
+  if (files.length === 0) return [];
+  if (files.length <= NETWORK_CHUNK_FILES) {
+    return uploadImagesMultipart(files);
+  }
+
+  const chunks: File[][] = [];
+  for (let i = 0; i < files.length; i += NETWORK_CHUNK_FILES) {
+    chunks.push(files.slice(i, i + NETWORK_CHUNK_FILES));
+  }
+
+  const indexed = chunks.map((chunk, i) => ({ i, chunk }));
+  const results = await mapPool(indexed, NETWORK_UPLOAD_CONCURRENCY, async ({ i, chunk }) => {
+    const data = await uploadImagesMultipart(chunk);
+    return { i, data };
+  });
+  results.sort((a, b) => a.i - b.i);
+  return results.flatMap((r) => r.data);
+}
 
 export const processImage = async (imageId: string, params: FullPipelineRequest) => {
   const res = await client.post<JobInfo>(`/images/${imageId}/process`, params);
+  return res.data;
+};
+
+/** Save browser-based Improve result as a new version (no API keys). */
+export const postLocalImprove = async (imageId: string, blob: Blob) => {
+  const form = new FormData();
+  form.append("file", blob, "improve.png");
+  const res = await client.post<ImageInfo>(`/images/${imageId}/local-improve`, form, {
+    timeout: 120_000,
+  });
   return res.data;
 };
 
@@ -49,8 +85,22 @@ export const getPresets = async () => {
   return res.data;
 };
 
+export async function suggestFilename(
+  imageId: string,
+  params: { version?: string | null; provider?: string }
+) {
+  const res = await client.post<{ basename: string }>(`/images/${imageId}/suggest-filename`, {
+    version: params.version ?? null,
+    provider: params.provider ?? "openai",
+  });
+  return res.data.basename;
+}
+
 export const getDownloadUrl = (imageId: string, versionId?: string) => {
-  const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+  const base =
+    (typeof import.meta.env.VITE_API_BASE_URL === "string"
+      ? import.meta.env.VITE_API_BASE_URL.trim()
+      : "") || "/api";
   const token = localStorage.getItem("access_token");
   let url = `${base}/images/${imageId}/download`;
   if (versionId) url += `?version=${versionId}`;

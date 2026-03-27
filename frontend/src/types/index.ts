@@ -32,6 +32,9 @@ export interface ImageInfo {
   versions: ImageVersion[];
 }
 
+/** Sanitized server job params (snake_case) for replay in the UI. */
+export type GenerationParams = Record<string, unknown>;
+
 export interface ImageVersion {
   id: string;
   version_type: string;
@@ -43,6 +46,9 @@ export interface ImageVersion {
   scale_factor: number | null;
   processing_cost_usd: number | null;
   created_at: string;
+  prompt_used?: string | null;
+  source_job_type?: string | null;
+  generation_params?: GenerationParams | null;
 }
 
 export interface JobInfo {
@@ -68,6 +74,7 @@ export interface EnhancementRequest {
   custom_prompt: string | null;
   output_format: string;
   quality: string;
+  auto_rotation_rad?: number | null;
 }
 
 export interface FullPipelineRequest {
@@ -82,6 +89,8 @@ export interface FullPipelineRequest {
   scale_factor: number;
   target_resolution: string | null;
   output_format: string;
+  /** Radians, browser-estimated; server builds perspective plate + corner-outpaint prompt for OpenAI/Gemini. */
+  auto_rotation_rad?: number | null;
 }
 
 export interface CostEstimate {

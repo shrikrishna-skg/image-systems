@@ -1,3 +1,4 @@
+import os
 import uuid
 import asyncio
 import logging
@@ -16,13 +17,14 @@ from app.services.gemini_service import gemini_image_service
 from app.services.replicate_service import replicate_upscale_service
 from app.utils.image_utils import get_image_dimensions
 from app.config import settings
-import os
+from app.services.perspective_plate import write_perspective_plate_tempfile
 import time
 
 logger = logging.getLogger(__name__)
 
-# Dedicated thread pool for CPU/IO-bound AI API calls
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="pipeline")
+# Dedicated thread pool for CPU/IO-bound work (resize, provider SDK calls).
+_workers = 8 if settings.LOCAL_DEV_MODE else 4
+_executor = ThreadPoolExecutor(max_workers=_workers, thread_name_prefix="pipeline")
 
 
 async def _update_job(db: AsyncSession, job_id: str, **kwargs):
@@ -68,6 +70,18 @@ async def _run_in_thread(func, *args, **kwargs):
     return await loop.run_in_executor(_executor, lambda: func(*args, **kwargs))
 
 
+def _resolve_enhance_image_path(params: dict, source_path: str) -> tuple[str, str | None]:
+    """Return (path_for_openai_or_gemini, tempfile_to_delete_or_none)."""
+    if not params.get("perspective_plate"):
+        return source_path, None
+    tmp = write_perspective_plate_tempfile(
+        source_path,
+        params["perspective"],
+        params.get("auto_rotation_rad"),
+    )
+    return tmp, tmp
+
+
 async def run_enhance_job(job_id: str):
     """Enhance an image using OpenAI or Gemini. Runs as async background task."""
     logger.info(f"Starting enhance job: {job_id}")
@@ -98,28 +112,36 @@ async def run_enhance_job(job_id: str):
             provider = params["provider"]
             start_time = time.time()
 
-            if provider == "openai":
-                logger.info("Calling OpenAI enhance...")
-                enhanced_bytes = await _run_in_thread(
-                    openai_image_service.enhance_image,
-                    api_key=api_key,
-                    image_path=source_path,
-                    prompt=params["prompt"],
-                    model=params.get("model", "gpt-image-1"),
-                    quality=params.get("quality", "high"),
-                    output_format=params.get("output_format", "png"),
-                )
-            elif provider == "gemini":
-                logger.info("Calling Gemini enhance...")
-                enhanced_bytes = await _run_in_thread(
-                    gemini_image_service.enhance_image,
-                    api_key=api_key,
-                    image_path=source_path,
-                    prompt=params["prompt"],
-                    model=params.get("model", "gemini-2.0-flash-exp-image-generation"),
-                )
-            else:
-                raise ValueError(f"Unknown provider: {provider}")
+            enhance_input, plate_tmp = _resolve_enhance_image_path(params, source_path)
+            try:
+                if provider == "openai":
+                    logger.info("Calling OpenAI enhance...")
+                    enhanced_bytes = await _run_in_thread(
+                        openai_image_service.enhance_image,
+                        api_key=api_key,
+                        image_path=enhance_input,
+                        prompt=params["prompt"],
+                        model=params.get("model", "gpt-image-1"),
+                        quality=params.get("quality", "high"),
+                        output_format=params.get("output_format", "png"),
+                    )
+                elif provider == "gemini":
+                    logger.info("Calling Gemini enhance...")
+                    enhanced_bytes = await _run_in_thread(
+                        gemini_image_service.enhance_image,
+                        api_key=api_key,
+                        image_path=enhance_input,
+                        prompt=params["prompt"],
+                        model=params.get("model", "gemini-2.0-flash-exp-image-generation"),
+                    )
+                else:
+                    raise ValueError(f"Unknown provider: {provider}")
+            finally:
+                if plate_tmp:
+                    try:
+                        os.unlink(plate_tmp)
+                    except OSError:
+                        pass
 
             duration = time.time() - start_time
             logger.info(f"Enhancement complete, got {len(enhanced_bytes)} bytes in {duration:.1f}s")
@@ -128,9 +150,9 @@ async def run_enhance_job(job_id: str):
             # Save enhanced image
             output_format = params.get("output_format", "png")
             filename = f"enhanced_{uuid.uuid4().hex[:8]}.{output_format}"
-            user_dir = f"{settings.UPLOAD_DIR}/{job.user_id}"
-            os.makedirs(user_dir, exist_ok=True)
-            output_path = f"{user_dir}/{filename}"
+            user_dir = settings.upload_dir_path / str(job.user_id)
+            user_dir.mkdir(parents=True, exist_ok=True)
+            output_path = str(user_dir / filename)
 
             with open(output_path, "wb") as f:
                 f.write(enhanced_bytes)
@@ -212,12 +234,15 @@ async def run_upscale_job(job_id: str):
             params = job.params_json
             result = await db.execute(select(Image).where(Image.id == job.image_id))
             image = result.scalar_one_or_none()
+            if not image:
+                raise ValueError(f"Image not found: {job.image_id}")
 
             # Use latest version if available
             result = await db.execute(
                 select(ImageVersion)
                 .where(ImageVersion.image_id == image.id)
                 .order_by(ImageVersion.created_at.desc())
+                .limit(1)
             )
             latest_version = result.scalar_one_or_none()
             source_path = latest_version.storage_path if latest_version else image.storage_path
@@ -238,9 +263,9 @@ async def run_upscale_job(job_id: str):
 
             output_format = params.get("output_format", "png")
             filename = f"upscaled_{scale_factor}x_{uuid.uuid4().hex[:8]}.{output_format}"
-            user_dir = f"{settings.UPLOAD_DIR}/{job.user_id}"
-            os.makedirs(user_dir, exist_ok=True)
-            output_path = f"{user_dir}/{filename}"
+            user_dir = settings.upload_dir_path / str(job.user_id)
+            user_dir.mkdir(parents=True, exist_ok=True)
+            output_path = str(user_dir / filename)
 
             with open(output_path, "wb") as f:
                 f.write(upscaled_bytes)
@@ -312,33 +337,42 @@ async def run_full_pipeline_job(job_id: str):
             await _update_job(db, job_id, progress_pct=10)
             logger.info(f"Step 1: Enhancing with {provider}")
 
-            if provider == "openai":
-                enhanced_bytes = await _run_in_thread(
-                    openai_image_service.enhance_image,
-                    api_key=enhance_api_key,
-                    image_path=source_path,
-                    prompt=params["prompt"],
-                    model=params.get("model", "gpt-image-1"),
-                    quality=params.get("quality", "high"),
-                )
-            elif provider == "gemini":
-                enhanced_bytes = await _run_in_thread(
-                    gemini_image_service.enhance_image,
-                    api_key=enhance_api_key,
-                    image_path=source_path,
-                    prompt=params["prompt"],
-                    model=params.get("model", "gemini-2.0-flash-exp-image-generation"),
-                )
-            else:
-                raise ValueError(f"Unknown provider: {provider}")
+            enhance_input, plate_tmp = _resolve_enhance_image_path(params, source_path)
+            try:
+                if provider == "openai":
+                    enhanced_bytes = await _run_in_thread(
+                        openai_image_service.enhance_image,
+                        api_key=enhance_api_key,
+                        image_path=enhance_input,
+                        prompt=params["prompt"],
+                        model=params.get("model", "gpt-image-1"),
+                        quality=params.get("quality", "high"),
+                        output_format=params.get("output_format", "png"),
+                    )
+                elif provider == "gemini":
+                    enhanced_bytes = await _run_in_thread(
+                        gemini_image_service.enhance_image,
+                        api_key=enhance_api_key,
+                        image_path=enhance_input,
+                        prompt=params["prompt"],
+                        model=params.get("model", "gemini-2.0-flash-exp-image-generation"),
+                    )
+                else:
+                    raise ValueError(f"Unknown provider: {provider}")
+            finally:
+                if plate_tmp:
+                    try:
+                        os.unlink(plate_tmp)
+                    except OSError:
+                        pass
 
             logger.info(f"Enhancement done: {len(enhanced_bytes)} bytes")
             await _update_job(db, job_id, progress_pct=40)
 
             # Save enhanced intermediate
-            user_dir = f"{settings.UPLOAD_DIR}/{job.user_id}"
-            os.makedirs(user_dir, exist_ok=True)
-            enhanced_path = f"{user_dir}/enhanced_{uuid.uuid4().hex[:8]}.png"
+            user_dir = settings.upload_dir_path / str(job.user_id)
+            user_dir.mkdir(parents=True, exist_ok=True)
+            enhanced_path = str(user_dir / f"enhanced_{uuid.uuid4().hex[:8]}.png")
 
             with open(enhanced_path, "wb") as f:
                 f.write(enhanced_bytes)

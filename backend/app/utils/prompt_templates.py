@@ -62,6 +62,13 @@ Whites should be pure white, wood tones should be warm and natural.""",
 
 # Perspective presets
 PERSPECTIVE_PRESETS = {
+    "align_verticals_auto": """Detect dominant vertical architectural lines (walls, door frames,
+windows) and correct camera roll so those lines read as vertical. Reduce obvious tilt without
+changing room layout or adding objects.""",
+
+    "level_horizon_auto": """Detect the horizon or dominant horizontal lines (ceilings, countertops,
+shorelines in exteriors) and correct roll so horizontals read level. Keep proportions natural.""",
+
     "straighten": """Correct any tilting or rotation so all vertical lines (walls, door frames,
 windows) are perfectly vertical and horizontal lines (ceiling edges, floor lines) are perfectly
 horizontal. Apply perspective correction to eliminate converging verticals.""",
@@ -70,6 +77,20 @@ horizontal. Apply perspective correction to eliminate converging verticals.""",
 edges of the frame. Correct barrel distortion so straight architectural lines appear straight.
 Maintain natural proportions throughout the room.""",
 }
+
+# Shown when the server sends a “perspective plate” (geometry applied, white voids at corners).
+CORNER_OUTPAINT_INSTRUCTION = """CORNER VOIDS (CRITICAL): The input image already has photographic
+perspective correction applied as a rigid transform. Pure white triangular or wedge-shaped regions at
+the frame edges are EMPTY — they are not part of the scene. Your job is to OUTPAINT / INPAINT those
+white areas only: seamlessly extend walls, ceiling, floor, baseboards, and sky (exteriors) so the
+output is a full rectangular photograph with no white gaps.
+
+Rules:
+- Match color, texture, grain, and lighting of adjacent pixels; keep lines continuous (verticals
+  vertical, horizontals level where appropriate).
+- Do NOT duplicate furniture, beds, windows, artwork, or people. Do NOT move or resize existing
+  subjects; preserve the central scene exactly as photographed.
+- Do NOT add text, logos, or watermarks. Output one photorealistic full-frame image."""
 
 # Room type context (for smarter prompts)
 ROOM_CONTEXTS = {
@@ -91,12 +112,15 @@ def build_enhancement_prompt(
     perspective: str = None,
     room_type: str = "general",
     custom_prompt: str = None,
+    perspective_corner_outpaint: bool = False,
 ) -> str:
     """Build a composite enhancement prompt from selected presets."""
 
     if custom_prompt:
-        # User provided their own prompt - prepend base instruction
-        return f"{BASE_INSTRUCTION}\n\nUser instruction: {custom_prompt}"
+        out = f"{BASE_INSTRUCTION}\n\nUser instruction: {custom_prompt}"
+        if perspective_corner_outpaint:
+            out += f"\n\n{CORNER_OUTPAINT_INSTRUCTION}"
+        return out
 
     parts = [BASE_INSTRUCTION]
 
@@ -116,6 +140,9 @@ def build_enhancement_prompt(
     if not any([lighting, quality, perspective]):
         parts.append(f"\nApply professional-grade enhancement: {QUALITY_PRESETS['full_enhance']}")
         parts.append(f"\n{LIGHTING_PRESETS['bright']}")
+
+    if perspective_corner_outpaint:
+        parts.append(f"\n{CORNER_OUTPAINT_INSTRUCTION}")
 
     parts.append("\nThe final result must look photorealistic — like a high-end professional photograph, not AI-generated.")
 

@@ -25,9 +25,16 @@ export default function UpscalePanel() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <Maximize2 className="w-5 h-5 text-indigo-600" />
+        <Maximize2 className="w-5 h-5 text-black" />
         Upscale Settings
       </h3>
+
+      {store.provider === "improve" && (
+        <p className="mb-4 text-xs text-gray-500 leading-relaxed">
+          With <strong className="text-gray-700">Improve</strong>, only scale factor uses canvas resizing. Target
+          resolution and format below apply when you use cloud Real-ESRGAN (OpenAI/Gemini + Replicate).
+        </p>
+      )}
 
       {/* Scale Factor */}
       <div className="mb-5">
@@ -39,7 +46,7 @@ export default function UpscalePanel() {
               onClick={() => store.setScaleFactor(opt.value)}
               className={`flex-1 py-3 px-4 rounded-lg text-center transition-colors ${
                 store.scaleFactor === opt.value
-                  ? "bg-indigo-100 text-indigo-700 border-2 border-indigo-300"
+                  ? "bg-neutral-200 text-black border-2 border-black"
                   : "bg-gray-50 text-gray-600 border-2 border-transparent hover:bg-gray-100"
               }`}
             >
@@ -60,7 +67,7 @@ export default function UpscalePanel() {
               onClick={() => store.setTargetResolution(opt.value)}
               className={`py-2 px-3 rounded-lg text-center transition-colors ${
                 store.targetResolution === opt.value
-                  ? "bg-indigo-100 text-indigo-700 border-2 border-indigo-300"
+                  ? "bg-neutral-200 text-black border-2 border-black"
                   : "bg-gray-50 text-gray-600 border-2 border-transparent hover:bg-gray-100"
               }`}
             >
@@ -77,7 +84,7 @@ export default function UpscalePanel() {
           <p className="text-sm text-gray-600">
             <strong>Original:</strong> {store.currentImage.width} × {store.currentImage.height}px
           </p>
-          <p className="text-sm text-indigo-700 font-medium">
+          <p className="text-sm text-black font-medium">
             <strong>Output:</strong> ~{store.currentImage.width * store.scaleFactor} ×{" "}
             {store.currentImage.height * store.scaleFactor}px
           </p>
@@ -94,7 +101,7 @@ export default function UpscalePanel() {
               onClick={() => store.setOutputFormat(opt.value)}
               className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                 store.outputFormat === opt.value
-                  ? "bg-indigo-100 text-indigo-700 border-2 border-indigo-300"
+                  ? "bg-neutral-200 text-black border-2 border-black"
                   : "bg-gray-50 text-gray-600 border-2 border-transparent hover:bg-gray-100"
               }`}
             >

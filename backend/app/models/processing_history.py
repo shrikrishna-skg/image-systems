@@ -1,6 +1,5 @@
 import datetime as dt
-from sqlalchemy import String, Integer, Float, DateTime, Text, Numeric, Column
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import String, Integer, Float, DateTime, Text, Numeric, Column, JSON
 from app.database import Base
 
 
@@ -25,5 +24,5 @@ class ProcessingHistory(Base):
     duration_seconds = Column(Float, nullable=True)
     status = Column(String(20), default="completed")
     error_message = Column(Text, nullable=True)
-    extra_data = Column("metadata", JSONB, default=dict)
+    extra_data = Column("metadata", JSON, default=dict)
     created_at = Column(DateTime, default=lambda: dt.datetime.now(dt.timezone.utc))

@@ -6,11 +6,17 @@ export const listKeys = async () => {
   return res.data;
 };
 
-export const createKey = async (provider: string, apiKey: string, label?: string) => {
+export const createKey = async (
+  provider: string,
+  apiKey: string,
+  label?: string,
+  skipConnectionTest?: boolean
+) => {
   const res = await client.post<ApiKeyInfo>("/keys", {
     provider,
     api_key: apiKey,
     label,
+    skip_connection_test: skipConnectionTest === true,
   });
   return res.data;
 };
@@ -23,6 +29,15 @@ export const validateKey = async (provider: string, apiKey: string) => {
   const res = await client.post<{ valid: boolean; provider: string; error?: string }>(
     "/keys/validate",
     { provider, api_key: apiKey }
+  );
+  return res.data;
+};
+
+/** Test the key already saved for this provider (server decrypts). */
+export const validateSavedKey = async (provider: string) => {
+  const res = await client.post<{ valid: boolean; provider: string; error?: string }>(
+    "/keys/validate-saved",
+    { provider }
   );
   return res.data;
 };

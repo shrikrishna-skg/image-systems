@@ -21,19 +21,16 @@ class ReplicateUpscaleService:
         """
         client = replicate_lib.Client(api_token=api_key)
 
-        # Read the image file
-        with open(image_path, "rb") as f:
-            image_data = f.read()
-
-        # Run Real-ESRGAN model
-        output = client.run(
-            "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
-            input={
-                "image": image_data,
-                "scale": min(scale_factor, 4),  # Real-ESRGAN supports up to 4x
-                "face_enhance": False,  # Not relevant for architecture
-            },
-        )
+        # Replicate expects a file-like object; keep the handle open for the duration of the run.
+        with open(image_path, "rb") as image_file:
+            output = client.run(
+                "nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa",
+                input={
+                    "image": image_file,
+                    "scale": min(scale_factor, 4),  # Real-ESRGAN supports up to 4x
+                    "face_enhance": False,
+                },
+            )
 
         # Output is a URL - download the result
         if isinstance(output, str):
