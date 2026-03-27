@@ -10,6 +10,7 @@ venv/
 .env.*
 !.env.example
 !**/.env.example
+!frontend/.env.development
 .env.local
 .env.production
 .env.development.local
@@ -24,8 +25,10 @@ dist/
 build/
 .vite/
 
-# Local-only SQLite (LOCAL_DEV_MODE)
+# Local-only SQLite (LOCAL_DEV_MODE) + journal sidecars
 backend/local.db
+backend/local.db-shm
+backend/local.db-wal
 backend/*.db
 
 # Uploads

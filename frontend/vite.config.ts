@@ -25,13 +25,13 @@ function warnIfApiUnreachable(apiOrigin: string): Plugin {
             clearTimeout(t);
             const box = [
               "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-              "  No backend on port 8000 — /api returns 502 in the browser.",
+              "  No backend on port 8000 — /api returns 502 (login & keys will fail).",
               "",
-              "  Browser-only app (no API): from repo root run npm run dev",
+              "  Fix: from the REPO ROOT run:  npm run dev",
+              "       (starts API + Vite together). First time: npm run setup:backend",
               "",
-              "  Full stack (API + AI): npm run setup:backend once, then npm run dev:full",
-              "",
-              "  If you only started the frontend and need the API: npm run dev:full",
+              "  Or two terminals:  LOCAL_DEV_MODE=true npm run backend",
+              "                    npm run dev:web",
               "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             ].join("\n");
             console.warn("\n\x1b[33m" + box + "\x1b[0m\n");
@@ -75,7 +75,7 @@ export default defineConfig(({ mode }: ConfigEnv) => {
       },
     },
     server: {
-      port: 2020,
+      port: Number(process.env.PORT || process.env.VITE_DEV_PORT || 2020),
       proxy: {
         "/api": {
           target: apiProxyTarget,

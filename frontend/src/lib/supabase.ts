@@ -36,7 +36,7 @@ if (import.meta.env.DEV && storageOnly) {
 }
 
 if (import.meta.env.DEV && localDev && !storageOnly) {
-  console.info("[Local dev] SQLite + JWT; run `npm run dev:full` from repo root for the API.");
+  console.info("[Local dev] SQLite + JWT; run `npm run dev` from repo root for the API + web.");
 }
 
 /** Dev-only: confirms the project URL and key reach Supabase Auth (does not log secrets). */

@@ -1,3 +1,4 @@
+/** Signed-in account. Email is the stable username; `id` is the server primary key for scoping data. */
 export interface User {
   id: string;
   email: string;

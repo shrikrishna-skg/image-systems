@@ -24,18 +24,7 @@ async def get_job(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return JobResponse(
-        id=job.id,
-        image_id=job.image_id,
-        job_type=job.job_type,
-        status=job.status,
-        progress_pct=job.progress_pct,
-        error_message=job.error_message,
-        result_version_id=job.result_version_id,
-        started_at=job.started_at.isoformat() if job.started_at else None,
-        completed_at=job.completed_at.isoformat() if job.completed_at else None,
-        created_at=job.created_at.isoformat(),
-    )
+    return JobResponse.model_validate(job)
 
 
 @router.get("", response_model=List[JobResponse])
@@ -54,18 +43,4 @@ async def list_jobs(
     )
     jobs = result.scalars().all()
 
-    return [
-        JobResponse(
-            id=j.id,
-            image_id=j.image_id,
-            job_type=j.job_type,
-            status=j.status,
-            progress_pct=j.progress_pct,
-            error_message=j.error_message,
-            result_version_id=j.result_version_id,
-            started_at=j.started_at.isoformat() if j.started_at else None,
-            completed_at=j.completed_at.isoformat() if j.completed_at else None,
-            created_at=j.created_at.isoformat(),
-        )
-        for j in jobs
-    ]
+    return [JobResponse.model_validate(j) for j in jobs]

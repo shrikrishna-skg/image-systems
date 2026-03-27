@@ -107,9 +107,12 @@ export default function AppShell() {
           <div className="flex items-start gap-2 rounded-xl border border-neutral-200 bg-white p-3">
             <Building2 className="w-4 h-4 text-neutral-400 shrink-0 mt-0.5" />
             <div className="min-w-0 text-xs text-neutral-600">
-              <p className="font-medium text-black truncate text-sm">
-                {user?.full_name || user?.email || "Operator"}
+              <p className="font-medium text-black truncate text-sm font-data" title={user?.email}>
+                {user?.email || "Operator"}
               </p>
+              {user?.full_name ? (
+                <p className="text-[11px] text-neutral-600 mt-0.5 truncate">{user.full_name}</p>
+              ) : null}
               <p className="text-[11px] text-neutral-500 mt-1 font-data">
                 {storageOnlyShell ? "Local session" : `${user?.images_processed ?? 0} assets lifetime`}
               </p>

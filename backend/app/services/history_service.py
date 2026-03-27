@@ -81,7 +81,7 @@ async def log_processing(
                 stats.images_uploaded = (stats.images_uploaded or 0) + 1
             elif action == "enhance":
                 stats.images_enhanced = (stats.images_enhanced or 0) + 1
-            elif action == "upscale":
+            elif action == "upscale" and status == "completed":
                 stats.images_upscaled = (stats.images_upscaled or 0) + 1
 
             # Track provider usage
@@ -89,7 +89,7 @@ async def log_processing(
                 stats.api_calls_openai = (stats.api_calls_openai or 0) + 1
             elif provider == "gemini":
                 stats.api_calls_gemini = (stats.api_calls_gemini or 0) + 1
-            elif provider == "replicate":
+            elif provider == "replicate" and status == "completed":
                 stats.api_calls_replicate = (stats.api_calls_replicate or 0) + 1
 
             # Accumulate cost

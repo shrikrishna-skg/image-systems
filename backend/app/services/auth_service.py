@@ -86,6 +86,9 @@ async def get_current_user(
             raise HTTPException(status_code=401, detail="User not found")
         if not user.is_active:
             raise HTTPException(status_code=403, detail="Account is disabled")
+        token_email = payload.get("email")
+        if token_email is not None and (token_email or "").strip().lower() != (user.email or "").strip().lower():
+            raise HTTPException(status_code=401, detail="Invalid token: email does not match account")
         return user
 
     payload = verify_supabase_token(credentials.credentials)

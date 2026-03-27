@@ -4,6 +4,9 @@ import { useAuthStore } from "../stores/authStore";
 import { Sparkles, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
+const localDevUi =
+  import.meta.env.VITE_LOCAL_DEV_MODE === "true" || import.meta.env.VITE_LOCAL_DEV_MODE === true;
+
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,6 +61,13 @@ export default function RegisterPage() {
 
         <div className="bg-white rounded-2xl border border-neutral-200/90 p-8">
           <h2 className="text-lg font-semibold text-black mb-6">Create account</h2>
+          {import.meta.env.DEV && localDevUi && (
+            <div className="mb-5 rounded-xl border border-amber-200/90 bg-amber-50/80 px-3 py-2.5 text-xs text-amber-950 leading-relaxed">
+              <strong className="text-amber-950">Local API</strong> — start the backend on port{" "}
+              <code className="rounded bg-white/90 px-1 font-mono">8000</code> (
+              <code className="rounded bg-white/90 px-1 font-mono">npm run dev</code> from repo root).
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Full name</label>

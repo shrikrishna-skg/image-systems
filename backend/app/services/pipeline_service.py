@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import uuid
 import asyncio
@@ -68,6 +70,109 @@ async def _run_in_thread(func, *args, **kwargs):
     """Run a sync function in the thread pool."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_executor, lambda: func(*args, **kwargs))
+
+
+async def _stall_progress_pulse(
+    job_id: str,
+    floor_pct: int,
+    cap_pct: int,
+    done: asyncio.Event,
+    *,
+    interval_sec: float = 60.0,
+    step_pct: int = 4,
+):
+    """
+    While a blocking provider call runs, creep progress so the UI does not look frozen.
+    OpenAI/Replicate often take several minutes with no intermediate callbacks.
+    """
+    step = 0
+    while True:
+        try:
+            await asyncio.wait_for(done.wait(), timeout=interval_sec)
+            return
+        except asyncio.TimeoutError:
+            step += 1
+            pct = min(floor_pct + step * step_pct, cap_pct)
+            try:
+                async with AsyncSessionLocal() as sdb:
+                    res = await sdb.execute(select(Job).where(Job.id == job_id))
+                    row = res.scalar_one_or_none()
+                    if not row or row.status != "processing":
+                        return
+                    await _update_job(sdb, job_id, progress_pct=pct)
+            except Exception:
+                logger.debug("stall progress pulse failed for job %s", job_id, exc_info=True)
+
+
+def _is_replicate_credit_error(exc: Exception) -> bool:
+    s = str(exc).lower()
+    return (
+        "402" in s
+        or "insufficient credit" in s
+        or "billing credit" in s
+        or "needs billing credit" in s
+    )
+
+
+async def _finish_full_pipeline_enhanced_only(
+    db: AsyncSession,
+    job_id: str,
+    job: Job,
+    image: Image,
+    enhanced_version: ImageVersion,
+    ew: int | None,
+    eh: int | None,
+    enhance_cost: float,
+    provider: str,
+    params: dict,
+    scale_factor: float,
+    note: str,
+) -> None:
+    """Mark job complete using the enhanced version (no Replicate output on disk)."""
+    await db.refresh(enhanced_version)
+    await _update_job(
+        db,
+        job_id,
+        status="completed",
+        progress_pct=100,
+        completed_at=datetime.now(timezone.utc),
+        result_version_id=enhanced_version.id,
+    )
+    logger.info("Full pipeline completed (enhanced-only): %s — %s", job_id, note)
+    from app.services.history_service import log_processing
+
+    await log_processing(
+        user_id=job.user_id,
+        action="enhance",
+        image_id=image.id,
+        job_id=job_id,
+        provider=provider,
+        model=params.get("model"),
+        prompt=params["prompt"],
+        input_width=image.width,
+        input_height=image.height,
+        output_width=ew,
+        output_height=eh,
+        quality=params.get("quality"),
+        cost_usd=float(enhance_cost),
+        status="completed",
+    )
+    await log_processing(
+        user_id=job.user_id,
+        action="upscale",
+        image_id=image.id,
+        job_id=job_id,
+        provider="replicate",
+        model="real-esrgan",
+        input_width=ew,
+        input_height=eh,
+        output_width=ew,
+        output_height=eh,
+        scale_factor=float(scale_factor),
+        cost_usd=0.0,
+        status="skipped",
+        error_message=note[:500],
+    )
 
 
 def _resolve_enhance_image_path(params: dict, source_path: str) -> tuple[str, str | None]:
@@ -338,27 +443,40 @@ async def run_full_pipeline_job(job_id: str):
             logger.info(f"Step 1: Enhancing with {provider}")
 
             enhance_input, plate_tmp = _resolve_enhance_image_path(params, source_path)
+            enhance_done = asyncio.Event()
+            enhance_pulse = asyncio.create_task(
+                _stall_progress_pulse(
+                    job_id, 11, 36, enhance_done, interval_sec=60.0, step_pct=4
+                )
+            )
             try:
-                if provider == "openai":
-                    enhanced_bytes = await _run_in_thread(
-                        openai_image_service.enhance_image,
-                        api_key=enhance_api_key,
-                        image_path=enhance_input,
-                        prompt=params["prompt"],
-                        model=params.get("model", "gpt-image-1"),
-                        quality=params.get("quality", "high"),
-                        output_format=params.get("output_format", "png"),
-                    )
-                elif provider == "gemini":
-                    enhanced_bytes = await _run_in_thread(
-                        gemini_image_service.enhance_image,
-                        api_key=enhance_api_key,
-                        image_path=enhance_input,
-                        prompt=params["prompt"],
-                        model=params.get("model", "gemini-2.0-flash-exp-image-generation"),
-                    )
-                else:
-                    raise ValueError(f"Unknown provider: {provider}")
+                try:
+                    if provider == "openai":
+                        enhanced_bytes = await _run_in_thread(
+                            openai_image_service.enhance_image,
+                            api_key=enhance_api_key,
+                            image_path=enhance_input,
+                            prompt=params["prompt"],
+                            model=params.get("model", "gpt-image-1"),
+                            quality=params.get("quality", "high"),
+                            output_format=params.get("output_format", "png"),
+                        )
+                    elif provider == "gemini":
+                        enhanced_bytes = await _run_in_thread(
+                            gemini_image_service.enhance_image,
+                            api_key=enhance_api_key,
+                            image_path=enhance_input,
+                            prompt=params["prompt"],
+                            model=params.get("model", "gemini-2.0-flash-exp-image-generation"),
+                        )
+                    else:
+                        raise ValueError(f"Unknown provider: {provider}")
+                finally:
+                    enhance_done.set()
+                    try:
+                        await enhance_pulse
+                    except Exception:
+                        logger.debug("enhance progress pulse join failed", exc_info=True)
             finally:
                 if plate_tmp:
                     try:
@@ -397,20 +515,82 @@ async def run_full_pipeline_job(job_id: str):
             )
             db.add(enhanced_version)
             await db.commit()
+            await db.refresh(enhanced_version)
 
-            # --- Step 2: Upscale ---
+            scale_factor = float(params.get("scale_factor", 2))
+
+            # --- Step 2: Upscale (optional in local dev) ---
+            if settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE:
+                await _finish_full_pipeline_enhanced_only(
+                    db,
+                    job_id,
+                    job,
+                    image,
+                    enhanced_version,
+                    ew,
+                    eh,
+                    float(enhance_cost),
+                    provider,
+                    params,
+                    scale_factor,
+                    "LOCAL_DEV_SKIP_UPSCALE: Replicate step skipped; result is the enhanced image.",
+                )
+                return
+
             await _update_job(db, job_id, progress_pct=50)
             logger.info("Step 2: Upscaling")
 
-            replicate_api_key = await _get_api_key(db, params["replicate_api_key_id"])
-            scale_factor = params.get("scale_factor", 2)
+            rid = params.get("replicate_api_key_id")
+            if not rid:
+                raise ValueError("Missing replicate_api_key_id in job params")
+            replicate_api_key = await _get_api_key(db, rid)
 
-            upscaled_bytes = await _run_in_thread(
-                replicate_upscale_service.upscale_multi_pass,
-                api_key=replicate_api_key,
-                image_path=enhanced_path,
-                total_scale=scale_factor,
+            upscale_done = asyncio.Event()
+            upscale_pulse = asyncio.create_task(
+                _stall_progress_pulse(
+                    job_id, 52, 82, upscale_done, interval_sec=75.0, step_pct=3
+                )
             )
+            try:
+                try:
+                    upscaled_bytes = await _run_in_thread(
+                        replicate_upscale_service.upscale_multi_pass,
+                        api_key=replicate_api_key,
+                        image_path=enhanced_path,
+                        total_scale=int(scale_factor),
+                    )
+                except RuntimeError as up_e:
+                    if (
+                        settings.LOCAL_DEV_MODE
+                        and settings.LOCAL_DEV_UPSCALE_FALLBACK_ON_CREDIT_ERROR
+                        and _is_replicate_credit_error(up_e)
+                    ):
+                        logger.warning(
+                            "Local dev: Replicate credit/billing error; finishing with enhanced-only: %s",
+                            up_e,
+                        )
+                        await _finish_full_pipeline_enhanced_only(
+                            db,
+                            job_id,
+                            job,
+                            image,
+                            enhanced_version,
+                            ew,
+                            eh,
+                            float(enhance_cost),
+                            provider,
+                            params,
+                            scale_factor,
+                            "Replicate billing/credit error (e.g. HTTP 402); delivered enhanced image only.",
+                        )
+                        return
+                    raise
+            finally:
+                upscale_done.set()
+                try:
+                    await upscale_pulse
+                except Exception:
+                    logger.debug("upscale progress pulse join failed", exc_info=True)
 
             logger.info(f"Upscale done: {len(upscaled_bytes)} bytes")
             await _update_job(db, job_id, progress_pct=85)

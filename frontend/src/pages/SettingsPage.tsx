@@ -1,5 +1,16 @@
-import { useState, useEffect } from "react";
-import { Key, Trash2, CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { isAxiosError } from "axios";
+import {
+  Key,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  ExternalLink,
+  Shield,
+  Pencil,
+} from "lucide-react";
 import { listKeys, createKey, deleteKey, validateKey, validateSavedKey } from "../api/apiKeys";
 import { isStorageOnlyMode } from "../lib/storageOnlyMode";
 import type { ApiKeyInfo } from "../types";
@@ -32,7 +43,8 @@ const PROVIDERS = [
   {
     id: "replicate",
     name: "Replicate",
-    description: "Real-ESRGAN upscaling. Token verified against Replicate account API.",
+    description:
+      "Real-ESRGAN upscaling. Requires a funded Replicate account (GPU runs are metered). Token is verified via the account API.",
     placeholder: "r8_...",
     models: [] as readonly string[],
   },
@@ -45,6 +57,10 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [validating, setValidating] = useState<string | null>(null);
   const [allowUnverifiedSave, setAllowUnverifiedSave] = useState(false);
+  const [keysBanner, setKeysBanner] = useState<null | "offline" | "auth">(null);
+  /** When a key already exists, editor starts collapsed until user chooses Edit. */
+  const [replaceEditorOpen, setReplaceEditorOpen] = useState<Record<string, boolean>>({});
+  const secretInputRefs = useRef<Partial<Record<string, HTMLInputElement | null>>>({});
 
   useEffect(() => {
     if (storageOnly) return;
@@ -52,11 +68,37 @@ export default function SettingsPage() {
   }, []);
 
   const loadKeys = async () => {
+    setKeysBanner(null);
     try {
       const data = await listKeys();
       setKeys(data);
-    } catch {
-      toast.error("Failed to load API keys");
+    } catch (err) {
+      if (isAxiosError(err)) {
+        if (err.response == null) {
+          setKeysBanner("offline");
+          toast.error("Cannot reach the API", {
+            description: "Start the backend from the repo root: npm run dev (or npm run backend in another terminal).",
+            duration: 8000,
+          });
+        } else if (err.response.status === 401 || err.response.status === 403) {
+          setKeysBanner("auth");
+          toast.error("Session expired or not allowed", {
+            description: "Sign in again to save and use API keys.",
+          });
+        } else {
+          const detail = err.response.data;
+          const msg =
+            typeof detail === "object" &&
+            detail !== null &&
+            "detail" in detail &&
+            typeof (detail as { detail: unknown }).detail === "string"
+              ? (detail as { detail: string }).detail
+              : "Failed to load API keys";
+          toast.error(msg);
+        }
+      } else {
+        toast.error("Failed to load API keys");
+      }
     } finally {
       setLoading(false);
     }
@@ -70,6 +112,7 @@ export default function SettingsPage() {
     try {
       await createKey(provider, key.trim(), undefined, allowUnverifiedSave);
       setNewKeys((prev) => ({ ...prev, [provider]: "" }));
+      setReplaceEditorOpen((prev) => ({ ...prev, [provider]: false }));
       await loadKeys();
       toast.success(`${provider} API key saved`, {
         description: allowUnverifiedSave
@@ -93,14 +136,40 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDelete = async (keyId: string, provider: string) => {
+  const handleDelete = async (keyId: string, providerId: string, providerLabel: string) => {
     try {
       await deleteKey(keyId);
+      setReplaceEditorOpen((prev) => {
+        const next = { ...prev };
+        delete next[providerId];
+        return next;
+      });
+      setNewKeys((prev) => ({ ...prev, [providerId]: "" }));
       await loadKeys();
-      toast.success(`${provider} key removed`);
+      toast.success(`${providerLabel} key removed`);
     } catch {
       toast.error("Failed to delete key");
     }
+  };
+
+  const requestDeleteKey = (keyId: string, providerId: string, providerLabel: string) => {
+    const ok = window.confirm(
+      `Remove the ${providerLabel} API key from this workspace?\n\nJobs that need this provider will stop working until you add a key again.`
+    );
+    if (!ok) return;
+    void handleDelete(keyId, providerId, providerLabel);
+  };
+
+  const openReplaceEditor = (providerId: string) => {
+    setReplaceEditorOpen((p) => ({ ...p, [providerId]: true }));
+    queueMicrotask(() => {
+      secretInputRefs.current[providerId]?.focus();
+    });
+  };
+
+  const closeReplaceEditor = (providerId: string) => {
+    setReplaceEditorOpen((p) => ({ ...p, [providerId]: false }));
+    setNewKeys((prev) => ({ ...prev, [providerId]: "" }));
   };
 
   const handleValidate = async (provider: string) => {
@@ -173,9 +242,13 @@ export default function SettingsPage() {
             <strong className="text-slate-800">Gemini</strong>, or{" "}
             <strong className="text-slate-800">Replicate</strong>, run{" "}
             <code className="rounded-md bg-white px-1.5 py-0.5 text-xs font-mono text-black border border-neutral-200">
-              npm run dev:full
+              npm run dev
             </code>{" "}
-            from the project folder, then open Settings again in that session.
+            from the repo root (or remove browser-only overrides in{" "}
+            <code className="rounded-md bg-white px-1.5 py-0.5 text-xs font-mono text-black border border-neutral-200">
+              frontend/.env.development.local
+            </code>
+            ), then open Settings again.
           </p>
         </div>
       </div>
@@ -188,6 +261,61 @@ export default function SettingsPage() {
         Integrations
       </p>
       <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Settings</h1>
+
+      {keysBanner === "offline" && (
+        <div
+          className="mt-4 rounded-2xl border border-amber-300/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950"
+          role="alert"
+        >
+          <p className="font-semibold text-amber-950">Backend not reachable</p>
+          <p className="mt-1.5 text-amber-900/90 leading-relaxed">
+            API keys are stored by the FastAPI server. From the{" "}
+            <strong className="text-amber-950">repository root</strong>, run{" "}
+            <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs font-mono border border-amber-200/80">
+              npm run dev
+            </code>{" "}
+            (starts API + web), or run{" "}
+            <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs font-mono border border-amber-200/80">
+              npm run backend
+            </code>{" "}
+            in one terminal and{" "}
+            <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs font-mono border border-amber-200/80">
+              npm run dev:web
+            </code>{" "}
+            in another (with{" "}
+            <code className="rounded bg-white/80 px-1.5 py-0.5 text-xs font-mono border border-amber-200/80">
+              LOCAL_DEV_MODE=true
+            </code>{" "}
+            on the API for local JWT).
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadKeys()}
+            className="mt-3 text-sm font-semibold text-amber-950 underline underline-offset-2 hover:text-amber-900"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {keysBanner === "auth" && (
+        <div
+          className="mt-4 rounded-2xl border border-neutral-300 bg-neutral-100 px-4 py-3 text-sm text-neutral-900"
+          role="alert"
+        >
+          <p className="font-semibold">Sign in required</p>
+          <p className="mt-1.5 text-neutral-700 leading-relaxed">
+            Open the login page and sign in (local dev session or Supabase). Then return here to add keys.
+          </p>
+          <Link
+            to="/login"
+            className="mt-3 inline-block text-sm font-semibold text-black underline underline-offset-2 hover:text-neutral-700"
+          >
+            Go to login
+          </Link>
+        </div>
+      )}
+
       <p className="mt-3 text-slate-600 mb-4 leading-relaxed max-w-2xl">
         Bring your own keys for enhancement and upscaling. Each save is{" "}
         <strong className="text-slate-800">checked against the provider</strong> unless you opt out below.
@@ -226,85 +354,201 @@ export default function SettingsPage() {
 
       <AdaptiveWorkspacePanel />
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         {PROVIDERS.map((provider) => {
           const existing = getExistingKey(provider.id);
+          const editorOpen = !existing || Boolean(replaceEditorOpen[provider.id]);
           return (
-            <div
+            <article
               key={provider.id}
-              className="bg-white rounded-2xl border border-slate-200/80 p-6"
+              className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
             >
-              <div className="flex items-start justify-between mb-4 gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <Key className="w-5 h-5 text-black" strokeWidth={2} />
-                    {provider.name}
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-0.5">{provider.description}</p>
-                  {provider.models.length > 0 && (
-                    <p className="text-xs text-slate-500 mt-2">
-                      <span className="font-semibold text-slate-700">Models in app:</span>{" "}
-                      {provider.models.join(", ")}
-                    </p>
-                  )}
-                  <a
-                    href={PROVIDER_CONSOLE_URLS[provider.id]}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-black mt-2 underline underline-offset-2"
-                  >
-                    API / image docs
-                    <ExternalLink className="w-3 h-3" aria-hidden />
-                  </a>
-                </div>
-                {existing && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {existing.is_valid ? (
-                      <CheckCircle className="w-5 h-5 text-black" />
-                    ) : (
-                      <XCircle className="w-5 h-5 text-black" />
-                    )}
-                    <span className="text-xs font-mono text-slate-500">{existing.masked_key}</span>
+              <div className="p-5 md:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                  <div className="flex min-w-0 gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-neutral-100 to-neutral-50 ring-1 ring-black/[0.06]"
+                      aria-hidden
+                    >
+                      <Key className="h-5 w-5 text-neutral-800" strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-semibold tracking-tight text-slate-900">{provider.name}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-600">{provider.description}</p>
+                      {provider.models.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                            Models in app
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {provider.models.map((m) => (
+                              <span
+                                key={m}
+                                className="inline-flex items-center rounded-full border border-slate-200/90 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700"
+                              >
+                                {m}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <a
+                        href={PROVIDER_CONSOLE_URLS[provider.id]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-black hover:decoration-slate-500"
+                      >
+                        Provider console &amp; docs
+                        <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                      </a>
+                    </div>
                   </div>
-                )}
+
+                  {existing ? (
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[min(100%,20rem)] sm:shrink-0 sm:items-end">
+                      <div
+                        className={
+                          existing.is_valid
+                            ? "inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-200/90 bg-emerald-50/90 px-3 py-1 text-xs font-semibold text-emerald-950"
+                            : "inline-flex w-fit items-center gap-1.5 rounded-full border border-amber-200/90 bg-amber-50/90 px-3 py-1 text-xs font-semibold text-amber-950"
+                        }
+                      >
+                        {existing.is_valid ? (
+                          <CheckCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                        )}
+                        {existing.is_valid ? "Verified with provider" : "Not verified — run Test"}
+                      </div>
+                      <div className="w-full rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-2.5 sm:text-right">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                          Stored key (masked)
+                        </p>
+                        <p className="mt-1 font-mono text-[13px] leading-snug tracking-wide text-slate-800 break-all">
+                          {existing.masked_key}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex w-full items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm text-slate-600 sm:w-auto sm:max-w-xs">
+                      <Shield className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                      <span>No key saved yet. Paste a secret below and save.</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <input
-                  type="password"
-                  value={newKeys[provider.id] || ""}
-                  onChange={(e) => setNewKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
-                  placeholder={existing ? "Enter new key to update..." : provider.placeholder}
-                  className="flex-1 min-w-[12rem] px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-neutral-400 focus:border-black outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleSave(provider.id)}
-                  disabled={!newKeys[provider.id]?.trim() || saving === provider.id}
-                  className="px-4 py-2.5 bg-black text-white text-sm rounded-xl font-semibold hover:bg-neutral-800 disabled:opacity-50 transition-all"
-                >
-                  {saving === provider.id ? "Saving..." : existing ? "Update" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleValidate(provider.id)}
-                  disabled={validating === provider.id || (!existing && !newKeys[provider.id]?.trim())}
-                  className="px-4 py-2.5 border border-slate-200 text-slate-700 text-sm rounded-xl font-medium hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                >
-                  {validating === provider.id ? "Testing…" : "Test"}
-                </button>
-                {existing && (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(existing.id, provider.name)}
-                    className="px-3 py-2.5 text-black hover:bg-neutral-100 rounded-xl transition-colors"
-                    aria-label={`Remove ${provider.name} key`}
+              {existing && !editorOpen && (
+                <div className="border-t border-slate-100 bg-slate-50/30 px-5 py-4 md:px-6">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Manage key
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Edit replaces the stored secret. Test checks the saved key with the provider. Remove deletes
+                    it from this workspace.
+                  </p>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => openReplaceEditor(provider.id)}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      <Pencil className="h-4 w-4 shrink-0" aria-hidden />
+                      Edit or replace key
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleValidate(provider.id)}
+                      disabled={validating === provider.id}
+                      className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      {validating === provider.id ? "Testing…" : "Test saved key"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => requestDeleteKey(existing.id, provider.id, provider.name)}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-red-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-red-800 transition-colors hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+                      Remove key
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {editorOpen && (
+                <div className="border-t border-slate-100 bg-slate-50/40 px-5 py-4 md:px-6">
+                  <label
+                    htmlFor={`api-key-${provider.id}`}
+                    className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
+                    {existing ? "New secret key" : "Secret key"}
+                  </label>
+                  {existing && (
+                    <p className="mt-1 text-xs text-slate-600">
+                      Paste a full replacement. Saving overwrites the current key for {provider.name}.
+                    </p>
+                  )}
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
+                    <input
+                      ref={(el) => {
+                        secretInputRefs.current[provider.id] = el;
+                      }}
+                      id={`api-key-${provider.id}`}
+                      type="password"
+                      autoComplete="off"
+                      value={newKeys[provider.id] || ""}
+                      onChange={(e) => setNewKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
+                      placeholder={existing ? "Paste new key…" : provider.placeholder}
+                      className="min-h-[44px] w-full min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-[box-shadow,border-color] placeholder:text-slate-400 focus:border-black focus:ring-2 focus:ring-neutral-300/80 sm:min-w-[14rem]"
+                    />
+                    <div className="flex flex-wrap gap-2 sm:shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSave(provider.id)}
+                        disabled={!newKeys[provider.id]?.trim() || saving === provider.id}
+                        className="min-h-[44px] flex-1 rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none"
+                      >
+                        {saving === provider.id ? "Saving…" : existing ? "Save new key" : "Save key"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleValidate(provider.id)}
+                        disabled={
+                          validating === provider.id || (!existing && !newKeys[provider.id]?.trim())
+                        }
+                        className="min-h-[44px] flex-1 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 sm:flex-none"
+                      >
+                        {validating === provider.id
+                          ? "Testing…"
+                          : newKeys[provider.id]?.trim()
+                            ? "Test pasted key"
+                            : "Test saved key"}
+                      </button>
+                      {existing && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => closeReplaceEditor(provider.id)}
+                            className="min-h-[44px] rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-100"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => requestDeleteKey(existing.id, provider.id, provider.name)}
+                            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-red-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-red-800 transition-colors hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+                            Remove
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </article>
           );
         })}
       </div>

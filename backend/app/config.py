@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # Fully local: file DB under backend/ + JWT auth (no Supabase). See frontend VITE_LOCAL_DEV_MODE.
     LOCAL_DEV_MODE: bool = False
     LOCAL_SQLITE_PATH: str = "./local.db"
+    # Optional: when set, /api/auth/local/session requires this exact email + password (dev only).
+    LOCAL_DEV_LOGIN_EMAIL: str = ""
+    LOCAL_DEV_LOGIN_PASSWORD: str = ""
+    # When LOCAL_DEV_MODE: skip Replicate entirely; pipeline completes with OpenAI/Gemini output only (no paid Replicate credit needed).
+    LOCAL_DEV_SKIP_UPSCALE: bool = False
+    # When LOCAL_DEV_MODE: if Replicate returns insufficient credit (402), complete with enhanced image instead of failing.
+    LOCAL_DEV_UPSCALE_FALLBACK_ON_CREDIT_ERROR: bool = True
 
     # Upload (relative paths are resolved under backend/, not shell cwd)
     MAX_UPLOAD_SIZE_MB: int = 50
@@ -46,8 +53,11 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:2020,http://127.0.0.1:2020,"
+        "http://localhost:2022,http://127.0.0.1:2022,"
         "http://localhost:8989,http://127.0.0.1:8989,"
-        "http://localhost:3000,http://127.0.0.1:3000"
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:3020,http://127.0.0.1:3020,"
+        "http://localhost:4173,http://127.0.0.1:4173"
     )
 
     @staticmethod
@@ -78,7 +88,14 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def cors_local_dev_origin_regex(self) -> Optional[str]:
+        """Any localhost / 127.0.0.1 port in dev (e.g. Vite on 3020) when using direct API origin."""
+        if self.LOCAL_DEV_MODE and self.APP_ENV == "development":
+            return r"https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+        return None
 
     @property
     def allowed_extensions_list(self) -> List[str]:
@@ -90,10 +107,17 @@ class Settings(BaseSettings):
 
     @property
     def upload_dir_path(self) -> Path:
+        """Resolve uploads under backend/. Absolute paths outside this tree are ignored (broken .env copy)."""
         p = Path(self.UPLOAD_DIR)
+        backend_root = _BACKEND_ROOT.resolve()
         if p.is_absolute():
-            return p.resolve()
-        return (_BACKEND_ROOT / p).resolve()
+            try:
+                resolved = p.resolve()
+                resolved.relative_to(backend_root)
+                return resolved
+            except ValueError:
+                return (backend_root / "uploads").resolve()
+        return (backend_root / p).resolve()
 
     @property
     def resolved_python_log_level(self) -> int:
@@ -123,6 +147,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-# Stable ID for LOCAL_DEV_MODE (matches JWT `sub` in /api/auth/local/session).
-LOCAL_DEV_USER_ID = "00000000-0000-4000-8000-000000000001"

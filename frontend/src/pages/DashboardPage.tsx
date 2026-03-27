@@ -32,6 +32,7 @@ import { useImageStore } from "../stores/imageStore";
 import { useJobPolling } from "../hooks/useJobPolling";
 import { useAuthenticatedImage } from "../hooks/useAuthenticatedImage";
 import { processImage, estimateCost, getImage, postLocalImprove } from "../api/images";
+import { getHealth } from "../api/health";
 import { getCachedImageBlob } from "../lib/imageBlobCache";
 import { runLocalEnhancePipeline, runLocalImproveOnBlob } from "../lib/localPipeline";
 import { listKeys } from "../api/apiKeys";
@@ -51,6 +52,8 @@ import { toastProcessingError } from "../lib/processingToast";
 import type { ImageInfo, JobInfo } from "../types";
 
 const storageOnly = isStorageOnlyMode();
+const localDev =
+  import.meta.env.VITE_LOCAL_DEV_MODE === "true" || import.meta.env.VITE_LOCAL_DEV_MODE === true || storageOnly;
 
 export default function DashboardPage() {
   const store = useImageStore();
@@ -82,6 +85,15 @@ export default function DashboardPage() {
   const [hasEnhanceKey, setHasEnhanceKey] = useState(false);
   const [hasReplicateKey, setHasReplicateKey] = useState(false);
   const [aiNamingProviders, setAiNamingProviders] = useState<("openai" | "gemini")[]>([]);
+  const [pipelineElapsedSec, setPipelineElapsedSec] = useState(0);
+  /** Backend LOCAL_DEV_SKIP_UPSCALE — Replicate not required for pipeline. Optimistic default matches `npm run dev`. */
+  const [devSkipUpscale, setDevSkipUpscale] = useState(
+    () =>
+      !storageOnly &&
+      (import.meta.env.VITE_LOCAL_DEV_MODE === "true" || import.meta.env.VITE_LOCAL_DEV_MODE === true)
+  );
+
+  const replicateOk = hasReplicateKey || devSkipUpscale;
 
   const displayQueue = useMemo(() => {
     if (store.sessionImages.length > 0) return store.sessionImages;
@@ -170,6 +182,24 @@ export default function DashboardPage() {
   }, [store.currentImage?.id, storageOnly]);
 
   useEffect(() => {
+    if (!localDev || storageOnly) {
+      setDevSkipUpscale(false);
+      return;
+    }
+    let cancelled = false;
+    void getHealth()
+      .then((h) => {
+        if (!cancelled) setDevSkipUpscale(Boolean(h.local_dev_skip_upscale));
+      })
+      .catch(() => {
+        if (!cancelled) setDevSkipUpscale(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [localDev, storageOnly]);
+
+  useEffect(() => {
     if (!storageOnly) return;
     useImageStore.getState().setCostEstimate({
       enhancement_cost: 0,
@@ -224,6 +254,18 @@ export default function DashboardPage() {
 
   const handleProcess = async () => {
     if (!store.currentImage) return;
+
+    if (!storageOnly && store.provider !== "improve") {
+      if (!hasEnhanceKey || !replicateOk) {
+        toast.error("Add an OpenAI or Gemini API key in Settings.", {
+          description: devSkipUpscale
+            ? "Replicate is optional while local dev skip-upscale is enabled."
+            : "Add a Replicate token too for upscaling, or run npm run dev (skip-upscale enabled by default).",
+          duration: 8000,
+        });
+        return;
+      }
+    }
 
     setProcessing(true);
     try {
@@ -374,8 +416,10 @@ export default function DashboardPage() {
       toast.error(pendingOnly ? "No pending assets in the queue." : "Queue is empty.");
       return;
     }
-    if (!storageOnly && store.provider !== "improve" && (!hasEnhanceKey || !hasReplicateKey)) {
-      toast.error("Add API keys in Settings before running batch jobs.");
+    if (!storageOnly && store.provider !== "improve" && (!hasEnhanceKey || !replicateOk)) {
+      toast.error("Add API keys in Settings before running batch jobs.", {
+        description: devSkipUpscale ? "Replicate is optional in current local dev mode." : undefined,
+      });
       return;
     }
 
@@ -532,6 +576,19 @@ export default function DashboardPage() {
   const isJobCompleted = store.currentJob?.status === "completed";
   const isJobFailed = store.currentJob?.status === "failed";
 
+  useEffect(() => {
+    if (!isJobActive || !store.currentJob?.id) {
+      setPipelineElapsedSec(0);
+      return;
+    }
+    const t0 = Date.now();
+    setPipelineElapsedSec(0);
+    const id = window.setInterval(() => {
+      setPipelineElapsedSec(Math.floor((Date.now() - t0) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [isJobActive, store.currentJob?.id]);
+
   // Get the result version for before/after
   const resultVersion = store.currentImage?.versions?.find(
     (v) => v.id === store.currentJob?.result_version_id
@@ -539,11 +596,16 @@ export default function DashboardPage() {
 
   // Progress bar label
   const getProgressLabel = (pct: number) => {
-    if (pct < 15) return "Preparing image...";
-    if (pct < 40) return storageOnly ? "Enhancing locally…" : "Enhancing with AI…";
-    if (pct < 70) return storageOnly ? "Upscaling in your browser…" : "Upscaling to high resolution…";
-    if (pct < 90) return "Saving result…";
-    return "Finalizing…";
+    if (pct < 10) return "Starting pipeline…";
+    if (pct < 40) {
+      return storageOnly
+        ? "Enhancing locally…"
+        : "Enhancing with AI… (often 1–8 min — keep this tab open)";
+    }
+    if (pct < 50) return storageOnly ? "Enhancing locally…" : "Saving enhanced image…";
+    if (pct < 85) return storageOnly ? "Upscaling in your browser…" : "Upscaling with Replicate…";
+    if (pct < 100) return "Saving final image…";
+    return "Done";
   };
 
   return (
@@ -718,29 +780,50 @@ export default function DashboardPage() {
             <WorkflowModePicker variant="compact" />
           </div>
 
-          {!storageOnly &&
-            store.provider !== "improve" &&
-            (!hasEnhanceKey || !hasReplicateKey) && (
+          {!storageOnly && store.provider !== "improve" && !hasEnhanceKey && (
             <div className="rounded-2xl border border-neutral-300 bg-neutral-100 px-5 py-4 text-sm text-black">
               <p className="font-semibold text-black">Connect model endpoints</p>
               <p className="mt-2 text-neutral-800 leading-relaxed">
-                {!hasEnhanceKey && (
-                  <>
-                    Add <strong>OpenAI</strong> or <strong>Gemini</strong> for generative enhancement (rooms,
-                    lighting, style).{" "}
-                  </>
-                )}
-                {!hasReplicateKey && (
-                  <>
-                    Add <strong>Replicate</strong> for Real-ESRGAN upscaling.{" "}
-                  </>
-                )}
+                Add <strong>OpenAI</strong> or <strong>Gemini</strong> for generative enhancement (rooms,
+                lighting, style).{" "}
                 <Link
                   to="/settings"
                   className="font-semibold text-black underline decoration-neutral-400 underline-offset-2 hover:decoration-black"
                 >
                   Open Settings
                 </Link>
+              </p>
+            </div>
+          )}
+          {!storageOnly && store.provider !== "improve" && hasEnhanceKey && !hasReplicateKey && !devSkipUpscale && (
+            <div className="rounded-2xl border border-neutral-300 bg-neutral-100 px-5 py-4 text-sm text-black">
+              <p className="font-semibold text-black">Add Replicate for upscaling</p>
+              <p className="mt-2 text-neutral-800 leading-relaxed">
+                Add a <strong>Replicate</strong> token for Real-ESRGAN upscaling, or use{" "}
+                <code className="rounded bg-white px-1 font-data text-xs border border-neutral-200">
+                  npm run dev
+                </code>{" "}
+                from the repo root (skips upscale in local dev so you only need OpenAI/Gemini).{" "}
+                <Link
+                  to="/settings"
+                  className="font-semibold text-black underline decoration-neutral-400 underline-offset-2 hover:decoration-black"
+                >
+                  Open Settings
+                </Link>
+              </p>
+            </div>
+          )}
+          {localDev && !storageOnly && store.provider !== "improve" && devSkipUpscale && hasEnhanceKey && (
+            <div className="rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 text-sm text-sky-950">
+              <p className="font-semibold text-sky-950">Local dev: upscale skipped</p>
+              <p className="mt-2 text-sky-900 leading-relaxed">
+                The API is running with <span className="font-mono text-xs">LOCAL_DEV_SKIP_UPSCALE</span>. You
+                get the <strong>enhanced</strong> image as the result (no Replicate billing). For full
+                upscaling, set{" "}
+                <code className="rounded bg-white px-1 font-data text-xs border border-sky-200">
+                  LOCAL_DEV_SKIP_UPSCALE=false
+                </code>{" "}
+                on the backend and add Replicate credit.
               </p>
             </div>
           )}
@@ -965,6 +1048,12 @@ export default function DashboardPage() {
                   <p className="text-sm text-neutral-500 mt-0.5 truncate">
                     {getProgressLabel(store.currentJob.progress_pct)}
                   </p>
+                  {!storageOnly && pipelineElapsedSec > 0 ? (
+                    <p className="text-[11px] text-neutral-400 mt-1 font-data tabular-nums">
+                      Elapsed {Math.floor(pipelineElapsedSec / 60)}m {pipelineElapsedSec % 60}s — the bar still
+                      moves slowly while OpenAI / Replicate run
+                    </p>
+                  ) : null}
                 </div>
                 <span className="text-2xl font-bold text-black tabular-nums font-data shrink-0">
                   {store.currentJob.progress_pct}%
@@ -981,10 +1070,17 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex justify-between mt-3 text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">
-                <span className={store.currentJob.progress_pct >= 10 ? "text-black" : ""}>Ingest</span>
-                <span className={store.currentJob.progress_pct >= 30 ? "text-black" : ""}>Enhance</span>
-                <span className={store.currentJob.progress_pct >= 60 ? "text-black" : ""}>Upscale</span>
-                <span className={store.currentJob.progress_pct >= 100 ? "text-black" : ""}>Commit</span>
+                {(() => {
+                  const p = store.currentJob.progress_pct;
+                  return (
+                    <>
+                      <span className={p < 10 ? "text-black" : ""}>Ingest</span>
+                      <span className={p >= 10 && p < 50 ? "text-black" : ""}>Enhance</span>
+                      <span className={p >= 50 && p < 85 ? "text-black" : ""}>Upscale</span>
+                      <span className={p >= 85 ? "text-black" : ""}>Commit</span>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}

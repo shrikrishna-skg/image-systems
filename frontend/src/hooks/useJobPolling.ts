@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { getJob } from "../api/jobs";
 import { getImage } from "../api/images";
 import { useImageStore } from "../stores/imageStore";
@@ -31,6 +32,15 @@ export function useJobPolling() {
               const updatedImage = await getImage(imageId);
               setCurrentImage(updatedImage);
               useImageStore.getState().upsertSessionImage(updatedImage);
+              toast.success("Pipeline finished", {
+                description: "Your result is below — use the before/after slider.",
+                duration: 5000,
+              });
+            } else {
+              toast.error("Pipeline failed", {
+                description: job.error_message || "Check API keys, billing, and backend logs.",
+                duration: 12_000,
+              });
             }
           }
         } catch (err) {

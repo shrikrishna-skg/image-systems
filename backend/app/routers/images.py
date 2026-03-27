@@ -263,14 +263,7 @@ async def enhance_image(
     from app.services.task_manager import create_background_task
     create_background_task(run_enhance_job(job.id), name=f"enhance-{job.id}")
 
-    return JobResponse(
-        id=job.id,
-        image_id=job.image_id,
-        job_type=job.job_type,
-        status=job.status,
-        progress_pct=job.progress_pct,
-        created_at=job.created_at.isoformat(),
-    )
+    return JobResponse.model_validate(job)
 
 
 @router.post("/{image_id}/upscale", response_model=JobResponse)
@@ -314,14 +307,7 @@ async def upscale_image(
     from app.services.task_manager import create_background_task
     create_background_task(run_upscale_job(job.id), name=f"upscale-{job.id}")
 
-    return JobResponse(
-        id=job.id,
-        image_id=job.image_id,
-        job_type=job.job_type,
-        status=job.status,
-        progress_pct=job.progress_pct,
-        created_at=job.created_at.isoformat(),
-    )
+    return JobResponse.model_validate(job)
 
 
 @router.post("/{image_id}/process", response_model=JobResponse)
@@ -345,11 +331,12 @@ async def process_full_pipeline(
     if not enhance_key:
         raise HTTPException(status_code=400, detail=f"No {req.provider} API key configured.")
 
+    skip_replicate = bool(settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE)
     result = await db.execute(
         select(ApiKey).where(ApiKey.user_id == user.id, ApiKey.provider == "replicate")
     )
     replicate_key = result.scalar_one_or_none()
-    if not replicate_key:
+    if not skip_replicate and not replicate_key:
         raise HTTPException(status_code=400, detail="No Replicate API key configured.")
 
     use_plate = should_apply_perspective_plate(req.perspective, req.auto_rotation_rad)
@@ -381,7 +368,7 @@ async def process_full_pipeline(
             "room_type": req.room_type,
             "custom_prompt": req.custom_prompt,
             "enhance_api_key_id": enhance_key.id,
-            "replicate_api_key_id": replicate_key.id,
+            "replicate_api_key_id": replicate_key.id if replicate_key else None,
             "perspective_plate": use_plate,
             "auto_rotation_rad": req.auto_rotation_rad,
         },
@@ -394,14 +381,7 @@ async def process_full_pipeline(
     from app.services.task_manager import create_background_task
     create_background_task(run_full_pipeline_job(job.id), name=f"pipeline-{job.id}")
 
-    return JobResponse(
-        id=job.id,
-        image_id=job.image_id,
-        job_type=job.job_type,
-        status=job.status,
-        progress_pct=job.progress_pct,
-        created_at=job.created_at.isoformat(),
-    )
+    return JobResponse.model_validate(job)
 
 
 @router.post("/{image_id}/local-improve", response_model=ImageDetailResponse)
@@ -661,8 +641,21 @@ async def estimate_cost(req: FullPipelineRequest):
     # Upscale cost
     passes = 1 if req.scale_factor <= 2 else 2
     upscale_cost = 0.04 * passes
+    if settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE:
+        upscale_cost = 0.0
 
     total = enhance_cost + upscale_cost
+
+    if settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE:
+        details = (
+            f"Enhancement: ${enhance_cost:.4f} ({req.provider}/{req.model}/{req.quality}) — "
+            f"local dev: Replicate upscale skipped (LOCAL_DEV_SKIP_UPSCALE)."
+        )
+    else:
+        details = (
+            f"Enhancement: ${enhance_cost:.4f} ({req.provider}/{req.model}/{req.quality}) + "
+            f"Upscale: ${upscale_cost:.4f} ({passes} pass{'es' if passes > 1 else ''})"
+        )
 
     return CostEstimateResponse(
         enhancement_cost=round(enhance_cost, 4),
@@ -670,5 +663,5 @@ async def estimate_cost(req: FullPipelineRequest):
         total_cost=round(total, 4),
         provider=req.provider,
         model=req.model,
-        details=f"Enhancement: ${enhance_cost:.4f} ({req.provider}/{req.model}/{req.quality}) + Upscale: ${upscale_cost:.4f} ({passes} pass{'es' if passes > 1 else ''})",
+        details=details,
     )

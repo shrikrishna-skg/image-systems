@@ -1,8 +1,8 @@
 /**
  * Browser-only: IndexedDB + canvas — no FastAPI.
  *
- * - Development: defaults to true so `cd frontend && npm run dev` works without port 8000.
- * - Opt into API: set VITE_USE_API=true or VITE_STORAGE_ONLY=false (see npm run dev:full).
+ * - Development: `frontend/.env.development` sets VITE_USE_API=true so Settings and jobs use the API.
+ *   For browser-only dev, add `.env.development.local` with VITE_USE_API=false and VITE_STORAGE_ONLY=true.
  * - Production: defaults to false (relative /api) unless VITE_STORAGE_ONLY=true.
  */
 export function isStorageOnlyMode(): boolean {

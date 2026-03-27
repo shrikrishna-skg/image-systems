@@ -1,15 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { Sparkles, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
+const localDevUi =
+  import.meta.env.VITE_LOCAL_DEV_MODE === "true" || import.meta.env.VITE_LOCAL_DEV_MODE === true;
+
+async function checkApiHealth(): Promise<boolean> {
+  const url = new URL("/api/health", window.location.origin).toString();
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), 4000);
+  try {
+    const res = await fetch(url, { signal: ac.signal });
+    clearTimeout(t);
+    return res.ok;
+  } catch {
+    clearTimeout(t);
+    return false;
+  }
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [apiUp, setApiUp] = useState<boolean | null>(null);
   const { login } = useAuthStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !localDevUi) return;
+    let cancelled = false;
+    void (async () => {
+      const ok = await checkApiHealth();
+      if (!cancelled) setApiUp(ok);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +86,48 @@ export default function LoginPage() {
 
         <div className="bg-white rounded-2xl border border-neutral-200/90 p-8">
           <h2 className="text-lg font-semibold text-black mb-6">Sign in</h2>
+          {import.meta.env.DEV && localDevUi && apiUp === false && (
+            <div
+              className="mb-5 rounded-xl border border-red-300/90 bg-red-50 px-3 py-3 text-xs text-red-950 leading-relaxed"
+              role="alert"
+            >
+              <strong className="text-red-950">Backend not running</strong>
+              <p className="mt-2 text-red-900/95">
+                This page proxies <code className="rounded bg-white/90 px-1 font-mono">/api</code> to{" "}
+                <code className="rounded bg-white/90 px-1 font-mono">127.0.0.1:8000</code>. Nothing is
+                listening there, so sign-in cannot work.
+              </p>
+              <p className="mt-2 font-medium text-red-950">
+                Fix: open a terminal at the <strong>repository root</strong> (folder with{" "}
+                <code className="rounded bg-white/90 px-1 font-mono">package.json</code>) and run:
+              </p>
+              <code className="mt-2 block rounded-lg bg-white/90 px-3 py-2 font-mono text-[11px] text-red-950 border border-red-200">
+                npm run dev
+              </code>
+              <p className="mt-2 text-red-900/90">
+                Or run <code className="rounded bg-white/80 px-1 font-mono">LOCAL_DEV_MODE=true npm run backend</code>{" "}
+                here, then click{" "}
+                <button
+                  type="button"
+                  className="font-semibold underline underline-offset-2"
+                  onClick={() => void checkApiHealth().then(setApiUp)}
+                >
+                  Check again
+                </button>
+                .
+              </p>
+            </div>
+          )}
+          {import.meta.env.DEV && localDevUi && apiUp === true && (
+            <div className="mb-5 rounded-xl border border-emerald-200/90 bg-emerald-50/80 px-3 py-2.5 text-xs text-emerald-950 leading-relaxed">
+              <strong className="text-emerald-950">API reachable</strong> — you can sign in below.
+            </div>
+          )}
+          {import.meta.env.DEV && localDevUi && apiUp === null && (
+            <div className="mb-5 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs text-neutral-600">
+              Checking API on port 8000…
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>

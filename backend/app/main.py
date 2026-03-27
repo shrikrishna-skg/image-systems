@@ -20,13 +20,11 @@ if settings.resolved_python_log_level > logging.DEBUG:
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select, text
+from sqlalchemy import text
 
-from app.config import LOCAL_DEV_USER_ID
-from app.database import engine, Base, AsyncSessionLocal
+from app.database import engine, Base
 from app.services.auth_service import _jwt_secret_configured
 import app.models  # noqa: F401 — register all ORM tables on Base.metadata
-from app.models.user import User
 from app.routers import auth, api_keys, images, jobs, history
 
 
@@ -36,18 +34,7 @@ async def lifespan(app: FastAPI):
     if settings.LOCAL_DEV_MODE:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(select(User).where(User.id == LOCAL_DEV_USER_ID))
-            if result.scalar_one_or_none() is None:
-                db.add(
-                    User(
-                        id=LOCAL_DEV_USER_ID,
-                        email="local@dev",
-                        full_name="Local dev",
-                        is_active=True,
-                    )
-                )
-                await db.commit()
+        # Local users are created on first POST /api/auth/local/session (one row per email).
     async with engine.connect() as conn:
         await conn.execute(text("SELECT 1"))
     log.info("Database connection OK")
@@ -95,14 +82,17 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS (explicit list + optional regex for any localhost port in LOCAL_DEV_MODE)
+_cors_kw: dict = {
+    "allow_origins": settings.cors_origins_list,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+_rx = settings.cors_local_dev_origin_regex
+if _rx:
+    _cors_kw["allow_origin_regex"] = _rx
+app.add_middleware(CORSMiddleware, **_cors_kw)
 
 # Routers
 app.include_router(auth.router)
@@ -124,4 +114,8 @@ async def health_check():
         "status": "healthy",
         "version": "2.0.0",
         "auth": "local" if settings.LOCAL_DEV_MODE else "supabase",
+        "local_dev_skip_upscale": bool(settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE),
+        "local_dev_upscale_fallback_on_credit_error": bool(
+            settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_UPSCALE_FALLBACK_ON_CREDIT_ERROR
+        ),
     }

@@ -1,5 +1,7 @@
-from pydantic import BaseModel
+from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
 
 
 class JobResponse(BaseModel):
@@ -10,8 +12,8 @@ class JobResponse(BaseModel):
     progress_pct: int
     error_message: Optional[str] = None
     result_version_id: Optional[str] = None
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    created_at: str
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
