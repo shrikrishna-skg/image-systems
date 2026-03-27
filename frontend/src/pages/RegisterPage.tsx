@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { EmailConfirmationPendingError } from "../lib/supabaseAuthErrors";
 import { useAuthStore } from "../stores/authStore";
 import { Sparkles, Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +24,13 @@ export default function RegisterPage() {
       navigate("/settings");
       toast.success("Account created! Add your API keys to get started.");
     } catch (err: unknown) {
+      if (err instanceof EmailConfirmationPendingError) {
+        toast.success(
+          `We sent a confirmation link to ${err.email}. Open it, then sign in on the login page.`
+        );
+        navigate("/login");
+        return;
+      }
       const msg =
         err instanceof Error
           ? err.message

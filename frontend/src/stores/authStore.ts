@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { getApiBase } from "../lib/apiBase";
 import { clearImageBlobCache } from "../lib/imageBlobCache";
 import { isStorageOnlyMode } from "../lib/storageOnlyMode";
+import {
+  EmailConfirmationPendingError,
+  formatSupabaseAuthError,
+} from "../lib/supabaseAuthErrors";
 import { isSupabaseAuthMisconfigured, supabase } from "../lib/supabase";
 import type { User } from "../types";
 
@@ -116,7 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       email,
       password,
     });
-    if (error) throw error;
+    if (error) throw new Error(formatSupabaseAuthError(error));
 
     const user: User = {
       id: data.user.id,
@@ -188,8 +192,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         data: { full_name: fullName || "" },
       },
     });
-    if (error) throw error;
+    if (error) throw new Error(formatSupabaseAuthError(error));
     if (!data.user) throw new Error("Registration failed");
+
+    if (!data.session) {
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      throw new EmailConfirmationPendingError(data.user.email ?? email);
+    }
 
     const user: User = {
       id: data.user.id,
@@ -205,6 +214,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     clearImageBlobCache();
     if (localDev) {
       localStorage.removeItem("access_token");
+      set({ user: null, isAuthenticated: false, isLoading: false });
+      return;
+    }
+    if (isSupabaseAuthMisconfigured()) {
       set({ user: null, isAuthenticated: false, isLoading: false });
       return;
     }

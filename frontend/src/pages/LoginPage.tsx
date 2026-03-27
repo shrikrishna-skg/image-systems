@@ -86,6 +86,14 @@ export default function LoginPage() {
 
         <div className="bg-white rounded-2xl border border-neutral-200/90 p-8">
           <h2 className="text-lg font-semibold text-black mb-6">Sign in</h2>
+          {!localDevUi && (
+            <div className="mb-5 rounded-xl border border-neutral-200/90 bg-neutral-50/80 px-3 py-2.5 text-xs text-neutral-700 leading-relaxed">
+              <strong className="text-neutral-900">Hosted app</strong> uses{" "}
+              <strong className="text-neutral-900">Supabase</strong> for accounts. If you only used
+              this app locally before, create an account here first—your local password is not reused.
+              If email confirmation is on in Supabase, check your inbox before signing in.
+            </div>
+          )}
           {import.meta.env.DEV && localDevUi && apiUp === false && (
             <div
               className="mb-5 rounded-xl border border-red-300/90 bg-red-50 px-3 py-3 text-xs text-red-950 leading-relaxed"
