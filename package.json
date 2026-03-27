@@ -1,6 +1,9 @@
 {
   "name": "multisystems-img-generator",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "workspaces": [
     "frontend"
   ],
