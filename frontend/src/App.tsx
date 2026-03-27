@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { isStorageOnlyMode } from "./lib/storageOnlyMode";
+import { isSupabaseAuthMisconfigured } from "./lib/supabase";
 import { useAuthStore } from "./stores/authStore";
+import DeploymentConfigPage from "./pages/DeploymentConfigPage";
 
 const storageOnlyApp = isStorageOnlyMode();
 import AppShell from "./components/layout/AppShell";
@@ -45,15 +47,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { loadUser, isAuthenticated } = useAuthStore();
+  const deploymentBlocked = isSupabaseAuthMisconfigured();
 
   useEffect(() => {
-    loadUser();
-  }, [loadUser]);
+    if (!deploymentBlocked) loadUser();
+  }, [loadUser, deploymentBlocked]);
 
   useEffect(() => {
     const tier = useAdaptiveExperienceStore.getState().experienceTier;
     useImageStore.getState().applyPipelineExperienceTier(tier);
   }, []);
+
+  if (deploymentBlocked) {
+    return <DeploymentConfigPage />;
+  }
 
   return (
     <BrowserRouter>

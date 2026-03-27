@@ -1,5 +1,5 @@
 import axios from "axios";
-import { supabase } from "../lib/supabase";
+import { isSupabaseAuthMisconfigured, supabase } from "../lib/supabase";
 
 const localDev =
   import.meta.env.VITE_LOCAL_DEV_MODE === "true" || import.meta.env.VITE_LOCAL_DEV_MODE === true;
@@ -81,6 +81,9 @@ client.interceptors.response.use(
       );
     }
     if (localDev) {
+      return Promise.reject(error);
+    }
+    if (isSupabaseAuthMisconfigured()) {
       return Promise.reject(error);
     }
     const originalRequest = error.config;

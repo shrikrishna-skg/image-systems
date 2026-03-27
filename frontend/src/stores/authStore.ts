@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { getApiBase } from "../lib/apiBase";
 import { clearImageBlobCache } from "../lib/imageBlobCache";
 import { isStorageOnlyMode } from "../lib/storageOnlyMode";
-import { supabase } from "../lib/supabase";
+import { isSupabaseAuthMisconfigured, supabase } from "../lib/supabase";
 import type { User } from "../types";
 
 const storageOnly = isStorageOnlyMode();
@@ -275,6 +275,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch {
         set({ user: null, isAuthenticated: false, isLoading: false });
       }
+      return;
+    }
+
+    if (isSupabaseAuthMisconfigured()) {
+      set({ user: null, isAuthenticated: false, isLoading: false });
       return;
     }
 
