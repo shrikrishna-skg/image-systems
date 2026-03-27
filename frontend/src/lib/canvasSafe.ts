@@ -26,8 +26,8 @@ export function upscaleDimensionsWithinCap(
   maxPx: number = MAX_CANVAS_PIXELS
 ): { w: number; h: number; effectiveScale: number } {
   const cappedRequest = Math.min(4, Math.max(1, requestedScale));
-  let w = Math.round(srcW * cappedRequest);
-  let h = Math.round(srcH * cappedRequest);
+  const w = Math.round(srcW * cappedRequest);
+  const h = Math.round(srcH * cappedRequest);
   if (w * h <= maxPx) {
     return { w, h, effectiveScale: cappedRequest };
   }

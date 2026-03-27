@@ -1,9 +1,5 @@
 import { create } from "zustand";
-import {
-  calibrationReadinessPercent,
-  isCalibrationComplete,
-  CALIBRATION_TARGET_UNITS,
-} from "../lib/adaptiveCalibration";
+import { calibrationReadinessPercent, isCalibrationComplete } from "../lib/adaptiveCalibration";
 import { useImageStore } from "./imageStore";
 import { toast } from "sonner";
 

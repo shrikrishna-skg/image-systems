@@ -78,6 +78,12 @@ export interface EnhancementRequest {
   auto_rotation_rad?: number | null;
 }
 
+export interface UpscaleRequest {
+  scale_factor: number;
+  target_resolution: string | null;
+  output_format: string;
+}
+
 export interface FullPipelineRequest {
   provider: string;
   model: string;

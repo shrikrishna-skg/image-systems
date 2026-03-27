@@ -1,6 +1,9 @@
 {
   "name": "multisystems-img-generator",
   "private": true,
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "setup:backend": "cd backend && python3 -m venv .venv && ./.venv/bin/python -m pip install -U pip && ./.venv/bin/pip install -r requirements.txt",
     "check-backend": "node scripts/check-backend-venv.mjs",
@@ -11,10 +14,10 @@
     "dev:supabase": "concurrently -n api,web -c blue,magenta \"npm run backend\" \"VITE_LOCAL_DEV_MODE=false VITE_STORAGE_ONLY=false VITE_USE_API=true VITE_VERBOSE_API_LOGS=true npm run dev --prefix frontend\"",
     "dev:web": "node scripts/warn-frontend-only.mjs && npm run dev --prefix frontend",
     "dev:all": "npm run dev",
-    "build": "npm run build --prefix frontend",
-    "lint": "npm run lint --prefix frontend",
-    "preview": "npm run preview --prefix frontend",
-    "install-frontend": "npm install --prefix frontend"
+    "build": "npm run build -w frontend",
+    "lint": "npm run lint -w frontend",
+    "preview": "npm run preview -w frontend",
+    "install-frontend": "npm install"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

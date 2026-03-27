@@ -207,8 +207,10 @@ export default function BeforeAfterSlider({
   const rMeta: ComparisonSizeMeta = resultMeta ?? { width: null, height: null, fileSizeBytes: null };
 
   useEffect(() => {
-    setIntrinsicBefore(null);
-    setIntrinsicAfter(null);
+    queueMicrotask(() => {
+      setIntrinsicBefore(null);
+      setIntrinsicAfter(null);
+    });
   }, [imageId, resultVersionId]);
 
   useEffect(() => {

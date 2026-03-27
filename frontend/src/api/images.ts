@@ -1,7 +1,15 @@
 import client from "./client";
 import { mapPool } from "../lib/asyncPool";
 import { NETWORK_CHUNK_FILES, NETWORK_UPLOAD_CONCURRENCY } from "../lib/ingestConfig";
-import type { ImageInfo, JobInfo, FullPipelineRequest, CostEstimate, Presets } from "../types";
+import type {
+  ImageInfo,
+  JobInfo,
+  FullPipelineRequest,
+  CostEstimate,
+  Presets,
+  EnhancementRequest,
+  UpscaleRequest,
+} from "../types";
 
 async function uploadImagesMultipart(files: File[]): Promise<ImageInfo[]> {
   if (files.length === 0) return [];
@@ -51,12 +59,12 @@ export const postLocalImprove = async (imageId: string, blob: Blob) => {
   return res.data;
 };
 
-export const enhanceImage = async (imageId: string, params: any) => {
+export const enhanceImage = async (imageId: string, params: EnhancementRequest) => {
   const res = await client.post<JobInfo>(`/images/${imageId}/enhance`, params);
   return res.data;
 };
 
-export const upscaleImage = async (imageId: string, params: any) => {
+export const upscaleImage = async (imageId: string, params: UpscaleRequest) => {
   const res = await client.post<JobInfo>(`/images/${imageId}/upscale`, params);
   return res.data;
 };
@@ -101,7 +109,6 @@ export const getDownloadUrl = (imageId: string, versionId?: string) => {
     (typeof import.meta.env.VITE_API_BASE_URL === "string"
       ? import.meta.env.VITE_API_BASE_URL.trim()
       : "") || "/api";
-  const token = localStorage.getItem("access_token");
   let url = `${base}/images/${imageId}/download`;
   if (versionId) url += `?version=${versionId}`;
   return url;
