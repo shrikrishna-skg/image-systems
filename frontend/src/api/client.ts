@@ -1,4 +1,5 @@
 import axios from "axios";
+import { createApiBaseMisconfiguredError, isPlaceholderApiBaseUrl } from "../lib/apiBase";
 import { isSupabaseAuthMisconfigured, supabase } from "../lib/supabase";
 
 const localDev =
@@ -18,6 +19,17 @@ const client = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
+
+/** Do not hit the network when the build still uses a template API host (Vercel env not set). */
+client.interceptors.request.use(
+  (config) => {
+    if (isPlaceholderApiBaseUrl()) {
+      return Promise.reject(createApiBaseMisconfiguredError());
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Add auth token to requests (local JWT or Supabase session)
 client.interceptors.request.use(

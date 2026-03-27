@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getHealth } from "../api/health";
+import { isPlaceholderApiBaseUrl } from "../lib/apiBase";
 import { isStorageOnlyMode } from "../lib/storageOnlyMode";
 
 interface ServerPolicyState {
@@ -15,6 +16,10 @@ export const useServerPolicyStore = create<ServerPolicyState>((set) => ({
   policyLoaded: false,
   fetchPolicy: async () => {
     if (isStorageOnlyMode()) {
+      set({ persistImageFiles: true, policyLoaded: true });
+      return;
+    }
+    if (isPlaceholderApiBaseUrl()) {
       set({ persistImageFiles: true, policyLoaded: true });
       return;
     }

@@ -18,3 +18,19 @@ export function isPlaceholderApiBaseUrl(): boolean {
     base === "http://example.com/api"
   );
 }
+
+/**
+ * Synchronous rejection for axios — avoids browser DNS/network spam when the API base
+ * was never configured (e.g. Vercel missing VITE_API_BASE_URL).
+ */
+export function createApiBaseMisconfiguredError(): Error {
+  const e = new Error(
+    "API URL is not configured. In Vercel → Settings → Environment Variables, set VITE_API_BASE_URL to your deployed API (must end with /api), then redeploy."
+  );
+  e.name = "ApiBaseMisconfigured";
+  return e;
+}
+
+export function isApiBaseMisconfiguredError(err: unknown): err is Error {
+  return err instanceof Error && err.name === "ApiBaseMisconfigured";
+}

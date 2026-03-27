@@ -12,6 +12,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { listKeys, createKey, deleteKey, validateKey, validateSavedKey } from "../api/apiKeys";
+import { isApiBaseMisconfiguredError, isPlaceholderApiBaseUrl } from "../lib/apiBase";
 import { isStorageOnlyMode } from "../lib/storageOnlyMode";
 import type { ApiKeyInfo } from "../types";
 import { toast } from "sonner";
@@ -58,7 +59,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [validating, setValidating] = useState<string | null>(null);
   const [allowUnverifiedSave, setAllowUnverifiedSave] = useState(false);
-  const [keysBanner, setKeysBanner] = useState<null | "offline" | "auth">(null);
+  const [keysBanner, setKeysBanner] = useState<null | "offline" | "auth" | "misconfigured">(null);
   /** When a key already exists, editor starts collapsed until user chooses Edit. */
   const [replaceEditorOpen, setReplaceEditorOpen] = useState<Record<string, boolean>>({});
   const secretInputRefs = useRef<Partial<Record<string, HTMLInputElement | null>>>({});
@@ -74,6 +75,10 @@ export default function SettingsPage() {
       const data = await listKeys();
       setKeys(data);
     } catch (err) {
+      if (isApiBaseMisconfiguredError(err)) {
+        setKeysBanner("misconfigured");
+        return;
+      }
       if (isAxiosError(err)) {
         if (err.response == null) {
           setKeysBanner("offline");
@@ -121,6 +126,10 @@ export default function SettingsPage() {
           : "Verified with the provider.",
       });
     } catch (err: unknown) {
+      if (isApiBaseMisconfiguredError(err)) {
+        toast.error(err.message);
+        return;
+      }
       const ax = err as { response?: { status?: number; data?: { detail?: string } } };
       const detail =
         typeof ax.response?.data?.detail === "string" ? ax.response.data.detail : "Failed to save key";
@@ -195,6 +204,10 @@ export default function SettingsPage() {
         toast.error(`${provider} key check failed: ${result.error || "authentication failed"}`);
       }
     } catch (err: unknown) {
+      if (isApiBaseMisconfiguredError(err)) {
+        toast.error(err.message);
+        return;
+      }
       const msg =
         err instanceof Error
           ? err.message
@@ -208,11 +221,14 @@ export default function SettingsPage() {
       toast.error(msg);
     } finally {
       setValidating(null);
-      await loadKeys();
+      if (!isPlaceholderApiBaseUrl()) {
+        await loadKeys();
+      }
     }
   };
 
   const getExistingKey = (provider: string) => keys.find((k) => k.provider === provider);
+  const apiMisconfigured = keysBanner === "misconfigured";
 
   if (loading) {
     return (
@@ -317,44 +333,84 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <p className="mt-3 text-slate-600 mb-4 leading-relaxed max-w-2xl">
-        Bring your own keys for enhancement and upscaling. Each save is{" "}
-        <strong className="text-slate-800">checked against the provider</strong> unless you opt out below.
-        Keys are encrypted at rest (AES-256), are not written to application logs, and are only decrypted on
-        the API server—never exposed to the browser or Supabase client libraries.
-      </p>
-
-      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm mb-8">
-        {(Object.keys(PROVIDER_DOC_URLS) as (keyof typeof PROVIDER_DOC_URLS)[]).map((id) => (
-          <a
-            key={id}
-            href={PROVIDER_DOC_URLS[id]}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-black font-medium underline underline-offset-2 hover:text-neutral-700"
+      {keysBanner === "misconfigured" && (
+        <div
+          className="mt-4 rounded-2xl border border-amber-400/90 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="alert"
+        >
+          <p className="font-semibold text-amber-950">Backend API URL is not set on this deployment</p>
+          <p className="mt-1.5 text-amber-900/95 leading-relaxed">
+            The frontend was built with a placeholder <code className="rounded bg-white/90 px-1 py-0.5 text-xs font-mono">VITE_API_BASE_URL</code>, so it will not call the network until you fix it (this avoids broken DNS errors in the console).
+          </p>
+          <ol className="mt-2 list-decimal pl-5 text-amber-900/95 space-y-1">
+            <li>
+              Open{" "}
+              <strong className="text-amber-950">Vercel</strong> → your project →{" "}
+              <strong className="text-amber-950">Settings → Environment Variables</strong>.
+            </li>
+            <li>
+              Set <code className="rounded bg-white/90 px-1 py-0.5 text-xs font-mono">VITE_API_BASE_URL</code>{" "}
+              to your live API root, including <code className="rounded bg-white/90 px-1 py-0.5 text-xs font-mono">/api</code>{" "}
+              (example: <code className="rounded bg-white/90 px-1 py-0.5 text-xs font-mono">https://api.myapp.com/api</code>).
+            </li>
+            <li>
+              <strong className="text-amber-950">Redeploy</strong> the production build so Vite picks up the new value.
+            </li>
+          </ol>
+          <button
+            type="button"
+            onClick={() => void loadKeys()}
+            className="mt-3 text-sm font-semibold text-amber-950 underline underline-offset-2 hover:text-amber-900"
           >
-            Get {id} key
-            <ExternalLink className="w-3.5 h-3.5 opacity-70" aria-hidden />
-          </a>
-        ))}
-      </div>
+            I&apos;ve updated env — retry
+          </button>
+        </div>
+      )}
 
-      <label className="flex items-start gap-3 mb-8 p-4 rounded-xl border border-amber-200/90 bg-amber-50/50 max-w-2xl cursor-pointer">
-        <input
-          type="checkbox"
-          checked={allowUnverifiedSave}
-          onChange={(e) => setAllowUnverifiedSave(e.target.checked)}
-          className="h-4 w-4 mt-0.5 rounded border-neutral-300 text-black focus:ring-neutral-400"
-        />
-        <span className="text-sm text-neutral-800 leading-relaxed">
-          <span className="font-semibold text-black">Save without verifying</span> — use if you are offline,
-          behind a strict firewall, or air-gapped. The key is stored encrypted but marked unverified until you
-          run <strong className="text-black">Test</strong> successfully.
-        </span>
-      </label>
+      {!apiMisconfigured && (
+        <>
+          <p className="mt-3 text-slate-600 mb-4 leading-relaxed max-w-2xl">
+            Bring your own keys for enhancement and upscaling. Each save is{" "}
+            <strong className="text-slate-800">checked against the provider</strong> unless you opt out below.
+            Keys are encrypted at rest (AES-256), are not written to application logs, and are only decrypted on
+            the API server—never exposed to the browser or Supabase client libraries.
+          </p>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm mb-8">
+            {(Object.keys(PROVIDER_DOC_URLS) as (keyof typeof PROVIDER_DOC_URLS)[]).map((id) => (
+              <a
+                key={id}
+                href={PROVIDER_DOC_URLS[id]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-black font-medium underline underline-offset-2 hover:text-neutral-700"
+              >
+                Get {id} key
+                <ExternalLink className="w-3.5 h-3.5 opacity-70" aria-hidden />
+              </a>
+            ))}
+          </div>
+
+          <label className="flex items-start gap-3 mb-8 p-4 rounded-xl border border-amber-200/90 bg-amber-50/50 max-w-2xl cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowUnverifiedSave}
+              onChange={(e) => setAllowUnverifiedSave(e.target.checked)}
+              className="h-4 w-4 mt-0.5 rounded border-neutral-300 text-black focus:ring-neutral-400"
+            />
+            <span className="text-sm text-neutral-800 leading-relaxed">
+              <span className="font-semibold text-black">Save without verifying</span> — use if you are offline,
+              behind a strict firewall, or air-gapped. The key is stored encrypted but marked unverified until you
+              run <strong className="text-black">Test</strong> successfully.
+            </span>
+          </label>
+        </>
+      )}
 
       <AdaptiveWorkspacePanel />
 
+      {!apiMisconfigured && (
+        <>
       <div className="space-y-5">
         {PROVIDERS.map((provider) => {
           const existing = getExistingKey(provider.id);
@@ -565,6 +621,8 @@ export default function SettingsPage() {
           and restrict keys in OpenAI / Google Cloud / Replicate consoles where project scoping is available.
         </p>
       </div>
+        </>
+      )}
     </div>
   );
 }
