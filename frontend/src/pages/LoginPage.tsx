@@ -26,7 +26,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [apiUp, setApiUp] = useState<boolean | null>(null);
-  const { login } = useAuthStore();
+  const { login, resetPasswordForEmail } = useAuthStore();
+  const [resetSending, setResetSending] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,6 +58,28 @@ export default function LoginPage() {
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error("Enter your email above first.");
+      return;
+    }
+    setResetSending(true);
+    try {
+      await resetPasswordForEmail(email);
+      toast.success("If that account exists, Supabase sent a reset link. Check your inbox.");
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : "Could not send reset email";
+      toast.error(msg);
+    } finally {
+      setResetSending(false);
     }
   };
 
@@ -167,6 +190,18 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
+          {!localDevUi && (
+            <p className="mt-3 text-center text-sm">
+              <button
+                type="button"
+                onClick={() => void handleForgotPassword()}
+                disabled={resetSending}
+                className="text-neutral-600 underline-offset-2 hover:underline hover:text-black disabled:opacity-50"
+              >
+                {resetSending ? "Sending…" : "Forgot password?"}
+              </button>
+            </p>
+          )}
           <p className="mt-6 text-center text-sm text-neutral-600">
             Don&apos;t have an account?{" "}
             <Link

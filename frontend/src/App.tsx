@@ -1,17 +1,20 @@
 import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { Loader2 } from "lucide-react";
+import AppShell from "./components/layout/AppShell";
+import FullscreenExitPortal from "./components/media/FullscreenExitPortal";
 import { isStorageOnlyMode } from "./lib/storageOnlyMode";
 import { isSupabaseAuthMisconfigured } from "./lib/supabase";
-import { useAuthStore } from "./stores/authStore";
 import DeploymentConfigPage from "./pages/DeploymentConfigPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import { useAuthStore } from "./stores/authStore";
+import { useAdaptiveExperienceStore } from "./stores/adaptiveExperienceStore";
+import { useImageStore } from "./stores/imageStore";
 
 const storageOnlyApp = isStorageOnlyMode();
-import AppShell from "./components/layout/AppShell";
-import { Loader2 } from "lucide-react";
 
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const HistoryPage = lazy(() => import("./pages/HistoryPage"));
@@ -23,9 +26,6 @@ function RouteFallback() {
     </div>
   );
 }
-import FullscreenExitPortal from "./components/media/FullscreenExitPortal";
-import { useAdaptiveExperienceStore } from "./stores/adaptiveExperienceStore";
-import { useImageStore } from "./stores/imageStore";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -99,9 +99,7 @@ function App() {
             ) : isAuthenticated ? (
               <Navigate to="/" replace />
             ) : (
-              <Suspense fallback={<RouteFallback />}>
-                <LoginPage />
-              </Suspense>
+              <LoginPage />
             )
           }
         />
@@ -113,9 +111,7 @@ function App() {
             ) : isAuthenticated ? (
               <Navigate to="/" replace />
             ) : (
-              <Suspense fallback={<RouteFallback />}>
-                <RegisterPage />
-              </Suspense>
+              <RegisterPage />
             )
           }
         />

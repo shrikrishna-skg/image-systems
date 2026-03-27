@@ -53,6 +53,8 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
+  /** Supabase hosted only: sends password reset email (add Site URL / redirect URLs in Supabase). */
+  resetPasswordForEmail: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   loadUser: () => Promise<void>;
 }
@@ -130,6 +132,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       created_at: data.user.created_at,
     };
     set({ user, isAuthenticated: true, isLoading: false });
+  },
+
+  resetPasswordForEmail: async (email) => {
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes("@")) {
+      throw new Error("Enter a valid email address.");
+    }
+    if (localDev) {
+      throw new Error("Password reset uses Supabase on the hosted app. In local dev, sign in via your API or reset SQLite users manually.");
+    }
+    if (isSupabaseAuthMisconfigured()) {
+      throw new Error("Supabase is not configured.");
+    }
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+      redirectTo: `${origin}/login`,
+    });
+    if (error) throw new Error(formatSupabaseAuthError(error));
   },
 
   register: async (email, password, fullName) => {
