@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { PasswordInput } from "../components/ui/PasswordInput";
 import { useAuthStore } from "../stores/authStore";
 import { Sparkles, Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -173,12 +174,12 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Password</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-400 focus:border-black outline-none transition-colors"
                 placeholder="••••••••"
+                autoComplete="current-password"
                 required
               />
             </div>

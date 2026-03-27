@@ -16,6 +16,7 @@ import { isStorageOnlyMode } from "../lib/storageOnlyMode";
 import type { ApiKeyInfo } from "../types";
 import { toast } from "sonner";
 import AdaptiveWorkspacePanel from "../components/settings/AdaptiveWorkspacePanel";
+import { PasswordInput } from "../components/ui/PasswordInput";
 import {
   GEMINI_IMAGE_MODELS,
   OPENAI_IMAGE_MODELS,
@@ -490,17 +491,17 @@ export default function SettingsPage() {
                     </p>
                   )}
                   <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
-                    <input
+                    <PasswordInput
                       ref={(el) => {
                         secretInputRefs.current[provider.id] = el;
                       }}
+                      wrapperClassName="min-w-0 flex-1"
                       id={`api-key-${provider.id}`}
-                      type="password"
                       autoComplete="off"
                       value={newKeys[provider.id] || ""}
                       onChange={(e) => setNewKeys((prev) => ({ ...prev, [provider.id]: e.target.value }))}
                       placeholder={existing ? "Paste new key…" : provider.placeholder}
-                      className="min-h-[44px] w-full min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-[box-shadow,border-color] placeholder:text-slate-400 focus:border-black focus:ring-2 focus:ring-neutral-300/80 sm:min-w-[14rem]"
+                      className="min-h-[44px] w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition-[box-shadow,border-color] placeholder:text-slate-400 focus:border-black focus:ring-2 focus:ring-neutral-300/80 sm:min-w-[14rem]"
                     />
                     <div className="flex flex-wrap gap-2 sm:shrink-0">
                       <button

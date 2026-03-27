@@ -5,13 +5,19 @@ import { Loader2 } from "lucide-react";
 import AppShell from "./components/layout/AppShell";
 import FullscreenExitPortal from "./components/media/FullscreenExitPortal";
 import { isStorageOnlyMode } from "./lib/storageOnlyMode";
-import { isSupabaseAuthMisconfigured } from "./lib/supabase";
+import {
+  isSupabaseAuthMisconfigured,
+  supabase,
+  usesLocalOrStorageAuth,
+} from "./lib/supabase";
 import DeploymentConfigPage from "./pages/DeploymentConfigPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import { useAuthStore } from "./stores/authStore";
 import { useAdaptiveExperienceStore } from "./stores/adaptiveExperienceStore";
 import { useImageStore } from "./stores/imageStore";
+import { useServerPolicyStore } from "./stores/serverPolicyStore";
+import { isPlaceholderApiBaseUrl } from "./lib/apiBase";
 
 const storageOnlyApp = isStorageOnlyMode();
 
@@ -53,10 +59,46 @@ function App() {
     if (!deploymentBlocked) loadUser();
   }, [loadUser, deploymentBlocked]);
 
+  /** After email confirmation / magic link, Supabase puts tokens in the URL hash — sync session and strip the hash. */
+  useEffect(() => {
+    if (deploymentBlocked) return;
+    if (usesLocalOrStorageAuth || isSupabaseAuthMisconfigured()) return;
+
+    const stripAuthHashIfPresent = () => {
+      const h = window.location.hash;
+      if (!h || h.length < 2) return;
+      if (
+        h.includes("access_token=") ||
+        h.includes("error=") ||
+        h.includes("type=signup") ||
+        h.includes("type=recovery") ||
+        h.includes("type=magiclink")
+      ) {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      }
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session) {
+        void useAuthStore.getState().loadUser();
+        stripAuthHashIfPresent();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [deploymentBlocked]);
+
   useEffect(() => {
     const tier = useAdaptiveExperienceStore.getState().experienceTier;
     useImageStore.getState().applyPipelineExperienceTier(tier);
   }, []);
+
+  useEffect(() => {
+    if (deploymentBlocked || storageOnlyApp) return;
+    void useServerPolicyStore.getState().fetchPolicy();
+  }, [deploymentBlocked]);
 
   if (deploymentBlocked) {
     return <DeploymentConfigPage />;
@@ -64,6 +106,19 @@ function App() {
 
   return (
     <BrowserRouter>
+      {!storageOnlyApp && isPlaceholderApiBaseUrl() && (
+        <div
+          role="alert"
+          className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950"
+        >
+          <strong className="font-semibold">API URL not configured.</strong>{" "}
+          <span className="text-amber-900">
+            Vercel still has a placeholder <code className="rounded bg-amber-100/80 px-1">VITE_API_BASE_URL</code>
+            . Set it to your deployed API origin (ending in <code className="rounded bg-amber-100/80 px-1">/api</code>
+            ), then redeploy.
+          </span>
+        </div>
+      )}
       <FullscreenExitPortal />
       <Toaster
         position="bottom-right"

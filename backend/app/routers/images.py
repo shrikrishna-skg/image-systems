@@ -439,6 +439,10 @@ async def upload_local_improve_version(
     await db.commit()
     await db.refresh(version)
 
+    from app.services.ephemeral_storage import maybe_ephemeral_after_job
+
+    await maybe_ephemeral_after_job(db, image.id, version.id)
+
     result = await db.execute(
         select(Image)
         .options(selectinload(Image.versions))
@@ -488,11 +492,18 @@ async def download_image(
         ver = next((v for v in image.versions if v.id == version), None)
         if not ver:
             raise HTTPException(status_code=404, detail="Version not found")
-        file_path = ver.storage_path
+        file_path = (ver.storage_path or "").strip()
         filename = f"enhanced_{image.original_filename}"
     else:
-        file_path = image.storage_path
+        file_path = (image.storage_path or "").strip()
         filename = image.original_filename
+
+    if not file_path:
+        raise HTTPException(
+            status_code=410,
+            detail="This file is no longer on the server. Download results promptly or keep a local copy — "
+            "see PERSIST_IMAGE_FILES_ON_SERVER / ephemeral retention.",
+        )
 
     if not storage_service.file_exists(file_path):
         raise HTTPException(status_code=404, detail="File not found on disk")
@@ -529,9 +540,15 @@ async def suggest_export_filename(
         ver = next((v for v in image.versions if v.id == req.version), None)
         if not ver:
             raise HTTPException(status_code=404, detail="Version not found")
-        file_path = ver.storage_path
+        file_path = (ver.storage_path or "").strip()
     else:
-        file_path = image.storage_path
+        file_path = (image.storage_path or "").strip()
+
+    if not file_path:
+        raise HTTPException(
+            status_code=410,
+            detail="Image bytes were removed from server storage; use a local file for filename suggestions.",
+        )
 
     if not storage_service.file_exists(file_path):
         raise HTTPException(status_code=404, detail="File not found on disk")

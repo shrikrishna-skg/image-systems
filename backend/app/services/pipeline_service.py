@@ -174,6 +174,10 @@ async def _finish_full_pipeline_enhanced_only(
         error_message=note[:500],
     )
 
+    from app.services.ephemeral_storage import maybe_ephemeral_after_job
+
+    await maybe_ephemeral_after_job(db, image.id, enhanced_version.id)
+
 
 def _resolve_enhance_image_path(params: dict, source_path: str) -> tuple[str, str | None]:
     """Return (path_for_openai_or_gemini, tempfile_to_delete_or_none)."""
@@ -303,6 +307,10 @@ async def run_enhance_job(job_id: str):
                 duration_seconds=duration, status="completed",
             )
 
+            from app.services.ephemeral_storage import maybe_ephemeral_after_job
+
+            await maybe_ephemeral_after_job(db, image.id, version.id)
+
         except Exception as e:
             logger.error(f"Enhance job failed: {job_id} - {str(e)}")
             traceback.print_exc()
@@ -405,6 +413,10 @@ async def run_upscale_job(job_id: str):
                 result_version_id=version.id,
             )
             logger.info(f"Upscale job completed: {job_id}")
+
+            from app.services.ephemeral_storage import maybe_ephemeral_after_job
+
+            await maybe_ephemeral_after_job(db, image.id, version.id)
 
         except Exception as e:
             logger.error(f"Upscale job failed: {job_id} - {str(e)}")
@@ -597,7 +609,7 @@ async def run_full_pipeline_job(job_id: str):
 
             output_format = params.get("output_format", "png")
             final_filename = f"final_{scale_factor}x_{uuid.uuid4().hex[:8]}.{output_format}"
-            final_path = f"{user_dir}/{final_filename}"
+            final_path = str(user_dir / final_filename)
 
             with open(final_path, "wb") as f:
                 f.write(upscaled_bytes)
@@ -652,6 +664,10 @@ async def run_full_pipeline_job(job_id: str):
                 scale_factor=float(scale_factor), cost_usd=float(upscale_cost),
                 status="completed",
             )
+
+            from app.services.ephemeral_storage import maybe_ephemeral_after_job
+
+            await maybe_ephemeral_after_job(db, image.id, final_version.id)
 
         except Exception as e:
             logger.error(f"Full pipeline failed: {job_id} - {str(e)}")

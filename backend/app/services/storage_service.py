@@ -62,6 +62,8 @@ class StorageService:
         return Path(storage_path).exists()
 
     async def delete_file(self, storage_path: str) -> bool:
+        if not storage_path or not str(storage_path).strip():
+            return False
         path = Path(storage_path)
         if path.exists():
             os.remove(path)

@@ -6,7 +6,7 @@ import {
   EmailConfirmationPendingError,
   formatSupabaseAuthError,
 } from "../lib/supabaseAuthErrors";
-import { isSupabaseAuthMisconfigured, supabase } from "../lib/supabase";
+import { getAuthRedirectOrigin, isSupabaseAuthMisconfigured, supabase } from "../lib/supabase";
 import type { User } from "../types";
 
 const storageOnly = isStorageOnlyMode();
@@ -145,7 +145,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (isSupabaseAuthMisconfigured()) {
       throw new Error("Supabase is not configured.");
     }
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const origin = getAuthRedirectOrigin();
+    if (!origin) {
+      throw new Error("Cannot determine app URL for password reset. Open the app in a browser and try again.");
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
       redirectTo: `${origin}/login`,
     });
@@ -205,11 +208,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       return;
     }
+    const redirectBase = getAuthRedirectOrigin();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName || "" },
+        emailRedirectTo: redirectBase ? `${redirectBase}/login` : undefined,
       },
     });
     if (error) throw new Error(formatSupabaseAuthError(error));

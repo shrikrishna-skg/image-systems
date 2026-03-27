@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # Align with frontend workspace batch cap (bulk import + fair API limits).
     MAX_FILES_PER_UPLOAD_BATCH: int = 25
 
+    # Privacy: when false, image bytes are removed from disk after each job (grace period for download).
+    # Database keeps only metadata (no pixels in DB). Users should download results during the grace window.
+    PERSIST_IMAGE_FILES_ON_SERVER: bool = True
+    EPHEMERAL_IMAGE_GRACE_SECONDS: int = 180
+
     # CORS
     CORS_ORIGINS: str = (
         "http://localhost:5173,http://127.0.0.1:5173,"

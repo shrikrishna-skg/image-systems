@@ -114,6 +114,8 @@ async def health_check():
         "status": "healthy",
         "version": "2.0.0",
         "auth": "local" if settings.LOCAL_DEV_MODE else "supabase",
+        "persist_image_files_on_server": bool(settings.PERSIST_IMAGE_FILES_ON_SERVER),
+        "ephemeral_image_grace_seconds": int(settings.EPHEMERAL_IMAGE_GRACE_SECONDS),
         "local_dev_skip_upscale": bool(settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE),
         "local_dev_upscale_fallback_on_credit_error": bool(
             settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_UPSCALE_FALLBACK_ON_CREDIT_ERROR

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { getJob } from "../api/jobs";
 import { getImage } from "../api/images";
 import { useImageStore } from "../stores/imageStore";
+import { useServerPolicyStore } from "../stores/serverPolicyStore";
 
 /** Tight loop while jobs run — first check is immediate (no 2s blind wait). */
 const POLL_MS = 1000;
@@ -32,10 +33,18 @@ export function useJobPolling() {
               const updatedImage = await getImage(imageId);
               setCurrentImage(updatedImage);
               useImageStore.getState().upsertSessionImage(updatedImage);
+              const { persistImageFiles, ephemeralGraceSeconds, policyLoaded } =
+                useServerPolicyStore.getState();
               toast.success("Pipeline finished", {
                 description: "Your result is below — use the before/after slider.",
                 duration: 5000,
               });
+              if (policyLoaded && !persistImageFiles) {
+                toast.info("Server privacy mode", {
+                  description: `Image files are removed from the API host after processing. Save or export within about ${ephemeralGraceSeconds}s if you need the file from the server.`,
+                  duration: 12_000,
+                });
+              }
             } else {
               toast.error("Pipeline failed", {
                 description: job.error_message || "Check API keys, billing, and backend logs.",

@@ -39,10 +39,28 @@ const keyForClient = usesLocalOrStorageAuth
 const persistRemoteSession =
   !usesLocalOrStorageAuth && !isSupabaseAuthMisconfigured();
 
+/**
+ * Origin used in Supabase email links (confirm signup, reset password).
+ * Defaults to `window.location.origin`. Set `VITE_AUTH_REDIRECT_ORIGIN` when you develop on
+ * localhost but want links to open your production app (e.g. https://image-systems.vercel.app).
+ */
+export function getAuthRedirectOrigin(): string {
+  const raw = import.meta.env.VITE_AUTH_REDIRECT_ORIGIN;
+  if (typeof raw === "string" && raw.trim()) {
+    return raw.trim().replace(/\/+$/, "");
+  }
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return "";
+}
+
 export const supabase = createClient(urlForClient, keyForClient, {
   auth: {
     persistSession: persistRemoteSession,
     autoRefreshToken: persistRemoteSession,
+    /** Parse `#access_token=…` / magic links after email confirmation. */
+    detectSessionInUrl: persistRemoteSession,
   },
 });
 
