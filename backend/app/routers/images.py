@@ -24,12 +24,54 @@ from app.services.storage_service import storage_service
 from app.config import settings
 from app.services.filename_suggest_service import suggest_filename_openai, suggest_filename_gemini
 from app.services.encryption_service import encryption_service
-from app.utils.image_utils import get_mime_type, probe_stored_image
+from app.utils.image_utils import get_mime_type, probe_stored_image, estimate_replicate_passes
 from app.utils.prompt_templates import build_enhancement_prompt, get_available_presets
 from app.services.perspective_plate import should_apply_perspective_plate
+from app.constants.cloud_image_models import (
+    ALLOWED_GEMINI_CLOUD_IMAGE_MODELS,
+    ALLOWED_OPENAI_CLOUD_IMAGE_MODELS,
+)
+from app.services.pipeline_service import _estimate_enhance_cost
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 log = logging.getLogger(__name__)
+
+
+def _validate_cloud_image_model(provider: str, model: str) -> None:
+    m = (model or "").strip()
+    if provider == "openai" and m not in ALLOWED_OPENAI_CLOUD_IMAGE_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported OpenAI image model. Use one of: {', '.join(sorted(ALLOWED_OPENAI_CLOUD_IMAGE_MODELS))}.",
+        )
+    if provider == "gemini" and m not in ALLOWED_GEMINI_CLOUD_IMAGE_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported Gemini image model. Use one of: {', '.join(sorted(ALLOWED_GEMINI_CLOUD_IMAGE_MODELS))}.",
+        )
+
+
+async def _validate_browser_improve_version(
+    db: AsyncSession,
+    image_id: str,
+    improve_version_id: str,
+) -> None:
+    vres = await db.execute(
+        select(ImageVersion).where(
+            ImageVersion.id == improve_version_id,
+            ImageVersion.image_id == image_id,
+        )
+    )
+    imp_ver = vres.scalar_one_or_none()
+    if not imp_ver:
+        raise HTTPException(status_code=400, detail="improve_input_version_id not found for this image.")
+    if (imp_ver.provider or "").lower() != "improve":
+        raise HTTPException(
+            status_code=400,
+            detail="improve_input_version_id must be a browser Improve version (local engine).",
+        )
+    if not (imp_ver.storage_path or "").strip():
+        raise HTTPException(status_code=400, detail="Improve version has no file on disk.")
 
 _JOB_PARAM_SECRET_KEYS = frozenset({"api_key_id", "enhance_api_key_id", "replicate_api_key_id"})
 
@@ -223,7 +265,18 @@ async def enhance_image(
     if not api_key_record:
         raise HTTPException(status_code=400, detail=f"No {req.provider} API key configured. Add one in Settings.")
 
-    use_plate = should_apply_perspective_plate(req.perspective, req.auto_rotation_rad)
+    if req.provider in ("openai", "gemini"):
+        _validate_cloud_image_model(req.provider, req.model)
+        if not (req.improve_input_version_id or "").strip():
+            raise HTTPException(
+                status_code=400,
+                detail="improve_input_version_id is required: run browser Improve first, then send that version to OpenAI or Gemini (same as the full pipeline).",
+            )
+        await _validate_browser_improve_version(db, image_id, req.improve_input_version_id)
+        # Improve raster already includes perspective/lighting from the browser; do not add a cloud plate.
+        use_plate = False
+    else:
+        use_plate = should_apply_perspective_plate(req.perspective, req.auto_rotation_rad)
     prompt = build_enhancement_prompt(
         lighting=req.lighting,
         quality=req.quality_preset,
@@ -253,6 +306,7 @@ async def enhance_image(
             "api_key_id": api_key_record.id,
             "perspective_plate": use_plate,
             "auto_rotation_rad": req.auto_rotation_rad,
+            "improve_input_version_id": req.improve_input_version_id,
         },
     )
     db.add(job)
@@ -331,6 +385,9 @@ async def process_full_pipeline(
     if not enhance_key:
         raise HTTPException(status_code=400, detail=f"No {req.provider} API key configured.")
 
+    if req.provider in ("openai", "gemini"):
+        _validate_cloud_image_model(req.provider, req.model)
+
     skip_replicate = bool(settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE)
     result = await db.execute(
         select(ApiKey).where(ApiKey.user_id == user.id, ApiKey.provider == "replicate")
@@ -345,22 +402,7 @@ async def process_full_pipeline(
                 status_code=400,
                 detail="improve_input_version_id is required: the app runs browser Improve first, then sends that version to the cloud model.",
             )
-        vres = await db.execute(
-            select(ImageVersion).where(
-                ImageVersion.id == req.improve_input_version_id,
-                ImageVersion.image_id == image_id,
-            )
-        )
-        imp_ver = vres.scalar_one_or_none()
-        if not imp_ver:
-            raise HTTPException(status_code=400, detail="improve_input_version_id not found for this image.")
-        if (imp_ver.provider or "").lower() != "improve":
-            raise HTTPException(
-                status_code=400,
-                detail="improve_input_version_id must be a browser Improve version (local engine).",
-            )
-        if not (imp_ver.storage_path or "").strip():
-            raise HTTPException(status_code=400, detail="Improve version has no file on disk.")
+        await _validate_browser_improve_version(db, image_id, req.improve_input_version_id)
 
     use_plate = should_apply_perspective_plate(req.perspective, req.auto_rotation_rad)
     if req.provider in ("openai", "gemini") and req.improve_input_version_id:
@@ -706,25 +748,14 @@ async def estimate_cost(req: FullPipelineRequest):
             details="Improve runs in your browser — no API usage.",
         )
 
-    # Enhancement cost
-    if req.provider == "openai":
-        cost_map = {
-            ("gpt-image-1.5", "high"): 0.20,
-            ("gpt-image-1.5", "medium"): 0.05,
-            ("gpt-image-1.5", "low"): 0.013,
-            ("gpt-image-1", "high"): 0.25,
-            ("gpt-image-1", "medium"): 0.063,
-            ("gpt-image-1", "low"): 0.016,
-            ("gpt-image-1-mini", "high"): 0.052,
-            ("gpt-image-1-mini", "medium"): 0.015,
-            ("gpt-image-1-mini", "low"): 0.006,
-        }
-        enhance_cost = cost_map.get((req.model, req.quality), 0.20)
+    # Enhancement cost (same estimator as pipeline job metadata)
+    if req.provider in ("openai", "gemini"):
+        enhance_cost = float(_estimate_enhance_cost(req.provider, req.model, req.quality))
     else:
-        enhance_cost = 0.0  # Gemini free/minimal
+        enhance_cost = 0.0
 
-    # Upscale cost
-    passes = 1 if req.scale_factor <= 2 else 2
+    # Upscale cost (aligned with plan_replicate_upscale_total + replicate multi-pass)
+    passes = estimate_replicate_passes(float(req.scale_factor), req.target_resolution)
     upscale_cost = 0.04 * passes
     if settings.LOCAL_DEV_MODE and settings.LOCAL_DEV_SKIP_UPSCALE:
         upscale_cost = 0.0

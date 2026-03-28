@@ -194,7 +194,7 @@ export default function BulkExportBar({ images, aiNamingProviders = [] }: Props)
             aiMap = { ...aiMap, [img.id]: data.basename };
             if (data.estimated_cost_usd != null) renameCostSum += data.estimated_cost_usd;
           } catch {
-            toast.error("AI name skipped", { description: img.original_filename, duration: 3500 });
+            toast.error("AI name skipped", { description: img.original_filename });
           }
           await sleep(120);
         }
@@ -226,12 +226,10 @@ export default function BulkExportBar({ images, aiNamingProviders = [] }: Props)
             ? ` · ~$${renameCostSum.toFixed(5)} USD est. total for AI renames (Google list rates; not a bill)`
             : ""
         }`,
-        duration: 5500,
       });
     } catch {
       toast.error("Bulk download failed", {
         description: "Try another format, fewer images, or download individually from each row.",
-        duration: 6000,
       });
     } finally {
       setBusy(false);
@@ -251,13 +249,12 @@ export default function BulkExportBar({ images, aiNamingProviders = [] }: Props)
           autoAiFetchedVersionRef.current = { ...autoAiFetchedVersionRef.current, [img.id]: v.id };
           setPerImageAi({ ...next });
         } catch {
-          toast.error("AI name failed", { description: img.original_filename, duration: 4000 });
+          toast.error("AI name failed", { description: img.original_filename });
         }
         await sleep(200);
       }
       toast.success("AI names applied", {
         description: "Review or edit each base below, then Download ZIP.",
-        duration: 4000,
       });
     } finally {
       setAiAllBusy(false);
@@ -274,12 +271,10 @@ export default function BulkExportBar({ images, aiNamingProviders = [] }: Props)
       setZipArchiveStem(`${data.basename}-bulk`);
       toast.success("ZIP archive name suggested", {
         description: "Uses the first asset in the list; edit the field before downloading.",
-        duration: 4500,
       });
     } catch {
       toast.error("Could not suggest ZIP name", {
         description: "Set the archive name manually or check your API key.",
-        duration: 5000,
       });
     } finally {
       setAiZipNameBusy(false);

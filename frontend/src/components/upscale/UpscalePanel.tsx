@@ -1,5 +1,6 @@
 import { useImageStore } from "../../stores/imageStore";
 import { Maximize2 } from "lucide-react";
+import { expectedUpscaleOutputSize } from "../../lib/targetResolution";
 
 const SCALE_OPTIONS = [
   { value: 2, label: "2x", description: "Good quality, fast" },
@@ -79,17 +80,31 @@ export default function UpscalePanel() {
       </div>
 
       {/* Output dimensions preview */}
-      {store.currentImage?.width && store.currentImage?.height && (
-        <div className="mb-5 p-3 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600">
-            <strong>Original:</strong> {store.currentImage.width} × {store.currentImage.height}px
-          </p>
-          <p className="text-sm text-black font-medium">
-            <strong>Output:</strong> ~{store.currentImage.width * store.scaleFactor} ×{" "}
-            {store.currentImage.height * store.scaleFactor}px
-          </p>
-        </div>
-      )}
+      {store.currentImage?.width && store.currentImage?.height && (() => {
+        const { width: ow, height: oh } = store.currentImage;
+        const out = expectedUpscaleOutputSize(ow, oh, store.targetResolution, store.scaleFactor);
+        return (
+          <div className="mb-5 p-3 bg-gray-50 rounded-lg space-y-1">
+            <p className="text-sm text-gray-600">
+              <strong>Original:</strong> {ow} × {oh}px
+            </p>
+            <p className="text-sm text-black font-medium">
+              <strong>Output:</strong> ~{out.width} × {out.height}px
+            </p>
+            {out.mode === "target" ? (
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Matches your target preset (long edge). With OpenAI or Gemini, the server upscales after
+                enhance and resizes to this size if needed.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-500 leading-relaxed">
+                From scale factor only. Choose a target resolution above to cap the long edge (cloud +
+                Replicate).
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Output Format */}
       <div>

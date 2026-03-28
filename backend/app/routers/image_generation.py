@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import uuid
 from typing import Optional
@@ -31,18 +32,14 @@ from app.services.openai_service import openai_image_service
 from app.services.storage_service import storage_service
 from app.utils.image_utils import probe_stored_image
 from app.services.filename_suggest_service import sanitize_stem
+from app.constants.cloud_image_models import (
+    ALLOWED_GEMINI_CLOUD_IMAGE_MODELS as ALLOWED_GEMINI_GEN_MODELS,
+    ALLOWED_OPENAI_CLOUD_IMAGE_MODELS as ALLOWED_OPENAI_GEN_MODELS,
+)
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/image-generation", tags=["image-generation"])
-
-ALLOWED_OPENAI_GEN_MODELS = frozenset({"gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"})
-ALLOWED_GEMINI_GEN_MODELS = frozenset(
-    {
-        "gemini-2.5-flash-image",
-        "gemini-2.0-flash-exp-image-generation",
-    }
-)
 
 
 async def _decrypt_user_provider_key(user_id: str, provider: str, db: AsyncSession) -> str:
@@ -74,6 +71,23 @@ def _validate_model(provider: str, model: str) -> None:
             status_code=400,
             detail=f"Unsupported Gemini image model. Use one of: {', '.join(sorted(ALLOWED_GEMINI_GEN_MODELS))}.",
         )
+
+
+def _http_from_provider_value_error(exc: Exception) -> HTTPException:
+    """Map provider ValueError / JSON errors to HTTP (same rules for OpenAI and Gemini)."""
+    detail = str(exc).strip()
+    if len(detail) > 2000:
+        detail = detail[:1997] + "..."
+    low = detail.lower()
+    status = 502
+    if (
+        "429" in detail
+        or "quota" in low
+        or "rate limit" in low
+        or "resource exhausted" in low
+    ):
+        status = 429
+    return HTTPException(status_code=status, detail=detail)
 
 
 def _norm_output_format(fmt: str) -> str:
@@ -132,6 +146,9 @@ async def compose_prompt(
         image_prompt, short_title = await asyncio.to_thread(
             interpret_user_request, req.user_request, req.provider, api_key
         )
+    except (ValueError, json.JSONDecodeError) as e:
+        log.warning("compose interpretation failed: %s", e)
+        raise _http_from_provider_value_error(e) from e
     except Exception as e:
         log.warning("compose interpretation failed: %s", e)
         raise HTTPException(
@@ -182,11 +199,12 @@ async def generate_image(
     if len(resolved_prompt) < 3:
         raise HTTPException(status_code=400, detail="Prompt is too short after processing.")
 
+    q = (req.quality or "high").lower()
+    if q not in ("low", "medium", "high"):
+        q = "high"
+
     try:
         if req.provider == "openai":
-            q = (req.quality or "high").lower()
-            if q not in ("low", "medium", "high"):
-                q = "high"
             image_bytes = await asyncio.to_thread(
                 openai_image_service.generate_image,
                 api_key,
@@ -201,9 +219,14 @@ async def generate_image(
                 api_key,
                 resolved_prompt,
                 req.model.strip(),
+                q,
+                out_fmt,
             )
     except HTTPException:
         raise
+    except (ValueError, json.JSONDecodeError) as e:
+        log.warning("image generation failed: %s", e)
+        raise _http_from_provider_value_error(e) from e
     except Exception as e:
         log.warning("image generation failed: %s", e, exc_info=True)
         raise HTTPException(
@@ -211,11 +234,13 @@ async def generate_image(
             detail="Image provider failed. Check your key, model access, and prompt; try again.",
         ) from e
 
+    # OpenAI returns the requested raster format; Gemini image models return PNG bytes — keep extension consistent.
     ext = ".png"
-    if out_fmt == "jpeg":
-        ext = ".jpg"
-    elif out_fmt == "webp":
-        ext = ".webp"
+    if req.provider == "openai":
+        if out_fmt == "jpeg":
+            ext = ".jpg"
+        elif out_fmt == "webp":
+            ext = ".webp"
     stem = sanitize_stem(short_title)[:48]
     fname = f"gen_{stem}_{uuid.uuid4().hex[:8]}{ext}"
 

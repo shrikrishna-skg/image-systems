@@ -8,9 +8,10 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
 from openai import OpenAI
-from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
+from app.services.gemini_service import make_gemini_client
 from app.utils.image_utils import resize_for_api
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,9 @@ _GEMINI_USD_PER_MILLION: dict[str, tuple[float, float]] = {
 # OpenAI gpt-4o-mini (approximate list; image input billed in tokens via usage)
 _OPENAI_MINI_IN_PER_M = 0.15
 _OPENAI_MINI_OUT_PER_M = 0.60
+
+# OpenAI() default client timeout is ~600s (see openai._constants.DEFAULT_TIMEOUT).
+_GEMINI_FILENAME_HTTP_TIMEOUT_MS = 600_000
 
 
 @dataclass
@@ -181,6 +185,19 @@ def suggest_filename_openai(api_key: str, image_path: str, context: Mapping[str,
     )
 
 
+def _collect_gemini_text_parts(response: Any) -> str:
+    out: list[str] = []
+    for cand in getattr(response, "candidates", None) or []:
+        content = getattr(cand, "content", None)
+        if content is None:
+            continue
+        for part in getattr(content, "parts", None) or []:
+            t = getattr(part, "text", None)
+            if t:
+                out.append(t)
+    return "".join(out)
+
+
 def suggest_filename_gemini(
     api_key: str,
     image_path: str,
@@ -188,29 +205,36 @@ def suggest_filename_gemini(
     model: str,
 ) -> FilenameSuggestResult:
     png_bytes = resize_for_api(image_path, max_dimension=1024)
-    client = genai.Client(api_key=api_key)
+    client = make_gemini_client(api_key, timeout_ms=_GEMINI_FILENAME_HTTP_TIMEOUT_MS)
     image_part = types.Part.from_bytes(data=png_bytes, mime_type="image/png")
     meta = _format_context_block(context)
+    # Same user prompt as suggest_filename_openai (text first, then image — mirrored in parts order).
     prompt = (
         f"{meta}\n\n"
-        "You name image files for professional media libraries (real estate, hotels, architecture, interiors, "
-        "exteriors, venues, products).\n"
-        "Study the picture: identify the kind of scene, main subject, and 1–2 distinctive visual cues "
-        "(e.g. twin-beds-city-view, marble-kitchen-island, sunset-pool-deck).\n"
-        "Output exactly ONE line: the filename stem only — lowercase kebab-case, ASCII letters digits hyphens, "
-        "max 55 characters, no extension, no backticks, no explanation."
+        "You label files for real-estate, hospitality, and architectural photo libraries.\n"
+        "Look at the image and the metadata. Infer scene type (e.g. bedroom, lobby, pool, exterior, food, product).\n"
+        "Output exactly ONE filename stem: lowercase kebab-case, ASCII letters digits hyphens only, "
+        "max 55 characters, no file extension, no spaces, no quotes, no explanation."
     )
     model_id = (model or "gemini-2.5-flash-lite").strip()
-    r = client.models.generate_content(
-        model=model_id,
-        contents=[types.Content(parts=[image_part, types.Part.from_text(text=prompt)])],
-        config=types.GenerateContentConfig(response_modalities=["TEXT"]),
-    )
-    text = ""
-    if r.candidates:
-        for part in r.candidates[0].content.parts:
-            if getattr(part, "text", None):
-                text += part.text
+    try:
+        r = client.models.generate_content(
+            model=model_id,
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[types.Part.from_text(text=prompt), image_part],
+                )
+            ],
+            config=types.GenerateContentConfig(
+                response_modalities=["TEXT"],
+                max_output_tokens=80,
+            ),
+        )
+    except genai_errors.APIError as e:
+        msg = getattr(e, "message", None) or str(e)
+        raise ValueError(f"Gemini filename suggest failed: {msg}") from e
+    text = _collect_gemini_text_parts(r)
     stem = sanitize_stem(text)
     pt, ct = _usage_from_gemini(r)
     est, note = _estimate_gemini_cost(model_id, pt, ct)

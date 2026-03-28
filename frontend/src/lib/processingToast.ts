@@ -28,6 +28,5 @@ export function toastProcessingError(err: unknown, fallbackTitle = "Something we
 
   toast.error(title, {
     description,
-    duration: 7200,
   });
 }

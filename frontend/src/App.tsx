@@ -125,25 +125,30 @@ function App() {
       <Toaster
         position="bottom-right"
         theme="light"
+        richColors={false}
         closeButton
         offset={20}
         gap={12}
         visibleToasts={4}
         toastOptions={{
-          duration: 5000,
+          unstyled: true,
+          duration: 1000,
           classNames: {
             toast:
-              "group pointer-events-auto flex w-[min(94vw,28rem)] items-start gap-4 rounded-[20px] border border-black/[0.08] bg-white/85 p-5 pr-12 !shadow-none backdrop-blur-2xl backdrop-saturate-[180%]",
+              "group pointer-events-auto flex w-[min(94vw,28rem)] items-start gap-4 rounded-[18px] border border-black/[0.08] bg-white p-5 pr-12 shadow-none",
             title:
               "text-[15px] font-semibold leading-snug tracking-[-0.015em] text-neutral-900 [font-family:-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Segoe_UI',system-ui,sans-serif]",
             description:
-              "text-[13px] leading-[1.45] text-neutral-600 mt-1.5 [font-family:-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Segoe_UI',system-ui,sans-serif]",
-            success: "!border-emerald-400/35 !bg-emerald-50/50",
-            error: "!border-red-400/35 !bg-red-50/45",
-            warning: "!border-amber-400/35 !bg-amber-50/45",
+              "text-[13px] leading-[1.45] text-black mt-1.5 [font-family:-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Segoe_UI',system-ui,sans-serif]",
+            success: "!border-black/15 !bg-white",
+            error: "!border-black/15 !bg-white",
+            warning: "!border-black/15 !bg-white",
+            info: "!border-black/15 !bg-white",
+            loading: "!border-black/15 !bg-white",
+            default: "!border-black/15 !bg-white",
             closeButton:
-              "absolute right-3 top-3 h-8 w-8 border-0 bg-black/[0.04] text-neutral-500 hover:text-neutral-900 hover:bg-black/[0.07] rounded-full transition-colors",
-            icon: "mt-0.5 size-[22px]",
+              "absolute right-3 top-3 h-8 w-8 border-0 bg-black/[0.06] text-neutral-600 hover:text-black hover:bg-black/[0.1] rounded-full transition-colors",
+            icon: "mt-0.5 size-[22px] text-neutral-900 [&_svg]:text-neutral-900",
           },
         }}
       />

@@ -159,3 +159,93 @@ def calculate_scale_factor(
     scale_w = target_width / original_width
     scale_h = target_height / original_height
     return max(scale_w, scale_h)
+
+
+def normalize_target_resolution_key(raw: Optional[str]) -> Optional[str]:
+    """Map UI/API strings to keys used by calculate_target_resolution."""
+    if raw is None:
+        return None
+    k = str(raw).strip().lower().replace(" ", "").replace("_", "")
+    aliases = {"1080p": "1080p", "2k": "2k", "4k": "4k", "8k": "8k"}
+    return aliases.get(k)
+
+
+def plan_replicate_upscale_total(
+    ew: int,
+    eh: int,
+    target_resolution: Optional[str],
+    scale_factor_pref: float,
+) -> Tuple[int, Optional[Tuple[int, int]]]:
+    """
+    Pick Real-ESRGAN multi-pass total scale (2, 4, or 8) and optional exact output (tw, th).
+
+    When target_resolution is set, dimensions match calculate_target_resolution(ew, eh, preset).
+    The chosen Replicate scale is the smallest value in {2,4,8} that is >= max(needed_scale, UI scale),
+    capped at 8; bytes are then resized to (tw, th) if the upscale output does not already match.
+    """
+    pref = float(scale_factor_pref) if scale_factor_pref else 2.0
+    if pref <= 2:
+        sf_snap = 2
+    elif pref <= 4:
+        sf_snap = 4
+    else:
+        sf_snap = 8
+
+    norm = normalize_target_resolution_key(target_resolution)
+    if norm and ew > 0 and eh > 0:
+        tw, th = calculate_target_resolution(ew, eh, norm)
+        need = max(tw / ew, th / eh)
+        need = max(need, float(sf_snap))
+        chosen = 8
+        for p in (2, 4, 8):
+            if p + 1e-9 >= need:
+                chosen = p
+                break
+        return chosen, (tw, th)
+
+    return sf_snap, None
+
+
+def estimate_replicate_passes(
+    scale_factor: float,
+    target_resolution: Optional[str],
+    reference_width: int = 1536,
+    reference_height: int = 1024,
+) -> int:
+    """Heuristic pass count for pricing when post-enhance dimensions are not known yet."""
+    rep, _ = plan_replicate_upscale_total(
+        reference_width, reference_height, target_resolution, scale_factor
+    )
+    return 1 if rep <= 4 else 2
+
+
+def resize_raster_bytes_to_size(
+    data: bytes,
+    target_w: int,
+    target_h: int,
+    output_format: str = "png",
+    jpeg_quality: int = 92,
+) -> bytes:
+    """Resize decoded raster bytes to exact pixel size (LANCZOS)."""
+    if target_w < 1 or target_h < 1:
+        raise ValueError("target dimensions must be positive")
+    with Image.open(io.BytesIO(data)) as img:
+        if img.mode == "RGBA" and output_format.lower() in ("jpeg", "jpg"):
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[-1])
+            img = background
+        elif img.mode not in ("RGB", "RGBA"):
+            img = img.convert("RGB")
+
+        img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+        buf = io.BytesIO()
+        fmt = (output_format or "png").lower()
+        if fmt in ("jpg", "jpeg"):
+            rgb = img.convert("RGB") if img.mode == "RGBA" else img
+            rgb.save(buf, format="JPEG", quality=jpeg_quality)
+        elif fmt == "webp":
+            img.save(buf, format="WEBP", quality=jpeg_quality)
+        else:
+            img.save(buf, format="PNG")
+        return buf.getvalue()

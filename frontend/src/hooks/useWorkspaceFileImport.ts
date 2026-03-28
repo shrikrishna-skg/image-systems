@@ -32,7 +32,6 @@ export function useWorkspaceFileImport() {
       if (!wm && acceptedFiles.length > 1) {
         toast.message("One photo at a time", {
           description: `Using the first of ${acceptedFiles.length} files. Enable workspace batch on the home screen to import many at once.`,
-          duration: 5500,
         });
       }
 
@@ -42,7 +41,6 @@ export function useWorkspaceFileImport() {
         if (room <= 0) {
           toast.error("Workspace is full", {
             description: `This batch holds at most ${MAX_WORKSPACE_ASSETS} assets. Remove some or clear the console, then import again.`,
-            duration: 6000,
           });
           return null;
         }
@@ -66,14 +64,12 @@ export function useWorkspaceFileImport() {
           toast.warning(`Skipped ${typeRejected.length} non-image file(s)`, {
             description:
               typeRejected.slice(0, 5).join(" · ") + (typeRejected.length > 5 ? " …" : ""),
-            duration: 6500,
           });
         }
 
         if (eligible.length === 0) {
           toast.error("No images to import", {
             description: "Drop photos or graphics (JPEG, PNG, WebP, HEIC, SVG, TIFF, …).",
-            duration: 6000,
           });
           return null;
         }
@@ -92,7 +88,6 @@ export function useWorkspaceFileImport() {
           if (failures.length > 0) {
             toast.warning(`Couldn’t import ${failures.length} file(s)`, {
               description: failures.slice(0, 6).join(" · ") + (failures.length > 6 ? " …" : ""),
-              duration: 6500,
             });
           }
           if (results.length === 0) return null;
@@ -119,7 +114,6 @@ export function useWorkspaceFileImport() {
       } catch (err: unknown) {
         toast.error("Import failed", {
           description: uploadErrorMessage(err),
-          duration: 7000,
         });
         return null;
       } finally {
@@ -148,7 +142,6 @@ function notifyImportToast(
   if (mode === "standard" && uploadedLen > 0) {
     toast.success("Photo ready", {
       description: "Adjust enhancement settings below, then run the pipeline.",
-      duration: 4200,
     });
     return;
   }
@@ -172,12 +165,11 @@ function notifyImportToast(
   if (r.added > 0) {
     toast.success(r.added === 1 ? "1 photo added to workspace" : `${r.added} photos added to workspace`, {
       description,
-      duration: description ? 5500 : 4000,
     });
     return;
   }
   if (uploadedLen > 0 && description) {
-    toast.message("Import finished", { description, duration: 5000 });
+    toast.message("Import finished", { description });
     return;
   }
   if (uploadedLen > 0) {

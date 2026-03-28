@@ -76,6 +76,11 @@ export interface EnhancementRequest {
   output_format: string;
   quality: string;
   auto_rotation_rad?: number | null;
+  /**
+   * Required for provider openai | gemini: browser Improve version id (POST .../local-improve).
+   * Matches full pipeline: cloud only sees the Improve raster.
+   */
+  improve_input_version_id?: string | null;
 }
 
 export interface UpscaleRequest {

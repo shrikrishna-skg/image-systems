@@ -106,10 +106,14 @@ export async function suggestFilename(
   imageId: string,
   params: { version?: string | null; provider?: string }
 ): Promise<SuggestFilenameResult> {
-  const res = await client.post<SuggestFilenameResult>(`/images/${imageId}/suggest-filename`, {
-    version: params.version ?? null,
-    provider: params.provider ?? "gemini",
-  });
+  const res = await client.post<SuggestFilenameResult>(
+    `/images/${imageId}/suggest-filename`,
+    {
+      version: params.version ?? null,
+      provider: params.provider ?? "gemini",
+    },
+    { timeout: 120_000 }
+  );
   return res.data;
 }
 

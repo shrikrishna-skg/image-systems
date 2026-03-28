@@ -231,7 +231,6 @@ export default function ImportFromUrlPage() {
     if (room <= 0) {
       toast.error("No free slots", {
         description: "Make room on Operations, or clear the workspace queue, then try again.",
-        duration: 5000,
       });
       return;
     }
@@ -240,7 +239,6 @@ export default function ImportFromUrlPage() {
         description: dimFilterActive
           ? "Loosen filters or wait for thumbnails to load dimensions."
           : "Wait for thumbnails to appear, then try again.",
-        duration: 5000,
       });
       return;
     }
@@ -250,12 +248,10 @@ export default function ImportFromUrlPage() {
     if (workspaceMode) {
       toast.success(`Selected ${pick.length} of your largest visible images (up to free slots)`, {
         description: "Import, then run batch enhancement on Operations — or open one photo to enhance it alone.",
-        duration: 5500,
       });
     } else {
       toast.success("Selected the largest visible image for standard import", {
         description: "On Operations you enhance one photo at a time. Enable workspace batch to run many in parallel.",
-        duration: 5500,
       });
     }
   }, [workspaceMode, visibleImages, dimFilterActive, pixelAreaForUrl]);
@@ -291,7 +287,6 @@ export default function ImportFromUrlPage() {
           description: useRenderedScrape
             ? "Try turning off Zyte for a plain fetch, add a Zyte key in Integrations for JavaScript-heavy pages, or open the page in a new tab."
             : "Try another URL, or turn on Zyte (Integrations) for JavaScript-heavy pages.",
-          duration: 6500,
         });
       } else {
         toast.success(`Found ${res.images.length} image URL(s)`);
@@ -317,7 +312,6 @@ export default function ImportFromUrlPage() {
       st.setWorkspaceMode(true);
       toast.message("Workspace batch enabled", {
         description: "Multiple URL imports are saved to your workspace queue on Operations.",
-        duration: 4500,
       });
       st = useImageStore.getState();
     }
@@ -330,7 +324,6 @@ export default function ImportFromUrlPage() {
     if (toImport.length === 0) {
       toast.error("Workspace full", {
         description: "Make room on Operations or clear the queue, then try again.",
-        duration: 5000,
       });
       return;
     }
@@ -338,7 +331,6 @@ export default function ImportFromUrlPage() {
     if (overflow > 0) {
       toast.message("Workspace limit", {
         description: `Importing ${toImport.length.toLocaleString()} of ${urls.length.toLocaleString()} (${room.toLocaleString()} slot(s) left in this workspace).`,
-        duration: 6000,
       });
     }
 
@@ -347,7 +339,10 @@ export default function ImportFromUrlPage() {
 
     setImporting(true);
     if (showProgress) {
-      toast.loading(`Importing 0 / ${toImport.length.toLocaleString()} images…`, { id: progressId });
+      toast.loading(`Importing 0 / ${toImport.length.toLocaleString()} images…`, {
+        id: progressId,
+        duration: Number.POSITIVE_INFINITY,
+      });
     }
 
     try {
@@ -358,7 +353,6 @@ export default function ImportFromUrlPage() {
         if (showProgress) toast.dismiss(progressId);
         toast.success("Photo ready", {
           description: "You’re on Operations — tune settings and run the pipeline.",
-          duration: 4000,
         });
         void navigate("/");
         return;
@@ -379,6 +373,7 @@ export default function ImportFromUrlPage() {
           const done = Math.min(i + chunk.length, toImport.length);
           toast.loading(`Importing ${done.toLocaleString()} / ${toImport.length.toLocaleString()} images…`, {
             id: progressId,
+            duration: Number.POSITIVE_INFINITY,
           });
         }
       }
@@ -404,7 +399,6 @@ export default function ImportFromUrlPage() {
           ]
             .filter(Boolean)
             .join(" ") || undefined,
-        duration: 5500,
       });
       void navigate("/");
     } catch (err: unknown) {
@@ -413,7 +407,6 @@ export default function ImportFromUrlPage() {
       if (inWorkspace && useImageStore.getState().sessionImages.length > 0) {
         toast.message("Partial import", {
           description: "Some images were saved — open Operations to work with your queue.",
-          duration: 5000,
         });
         void navigate("/");
       }

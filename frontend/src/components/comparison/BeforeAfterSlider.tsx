@@ -388,12 +388,10 @@ export default function BeforeAfterSlider({
       const mb = (out.size / (1024 * 1024)).toFixed(1);
       toast.success("Download started", {
         description: `${filename} · about ${mb} MB`,
-        duration: 4000,
       });
     } catch {
       toast.error("Download failed", {
         description: "Use Download results below for more format options.",
-        duration: 5000,
       });
     } finally {
       setEnhancedDownloading(false);

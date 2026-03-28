@@ -70,8 +70,9 @@ export default function EnhancePanel() {
         {(store.provider === "openai" || store.provider === "gemini") && (
           <p className="mt-2 text-xs text-gray-500 leading-relaxed">
             <strong className="text-gray-700">Improve always runs first</strong> in your browser with the
-            settings below, then the cloud model refines that image. The raw upload is not sent directly to
-            the API.
+            settings below. <strong className="text-gray-700">OpenAI and Gemini</strong> only receive the{" "}
+            <strong className="text-gray-700">saved Improve image</strong> (same pipeline step for both): the raw
+            upload is never sent to the cloud model.
           </p>
         )}
       </div>
@@ -107,8 +108,8 @@ export default function EnhancePanel() {
         </div>
       )}
 
-      {/* Quality Tier (OpenAI only) */}
-      {store.provider === "openai" && (
+      {/* Quality Tier (OpenAI + Gemini — same job params; Gemini API may not map 1:1) */}
+      {(store.provider === "openai" || store.provider === "gemini") && (
         <div className="mb-5">
           <label className="block text-sm font-medium text-gray-700 mb-2">Quality Tier</label>
           <div className="flex gap-2">
@@ -126,6 +127,11 @@ export default function EnhancePanel() {
               </button>
             ))}
           </div>
+          {store.provider === "gemini" && (
+            <p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
+              Same values are sent to the backend as for OpenAI; Gemini image models may not treat tiers identically.
+            </p>
+          )}
         </div>
       )}
 

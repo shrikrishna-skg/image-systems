@@ -78,7 +78,6 @@ export default function ImageGenerationPage() {
       setRefinedPrompt(res.interpreted_prompt);
       toast.success("Prompt refined", {
         description: `“${res.short_title}” — edit the refined prompt if you like, then Generate.`,
-        duration: 5000,
       });
     } catch (err: unknown) {
       toastProcessingError(err, "Couldn’t interpret that request");
@@ -121,7 +120,6 @@ export default function ImageGenerationPage() {
           description: res.used_interpretation
             ? "Opened on Operations — run enhance / pipeline when you’re ready."
             : "Opened on Operations from your exact prompt.",
-          duration: 5000,
         });
       } else {
         const r = st.addImagesToSession([imageInfo]);
@@ -130,12 +128,10 @@ export default function ImageGenerationPage() {
           toast.success("Image created", {
             description:
               "Workspace queue was full — opened this photo as the current asset on Operations. Remove items from the batch to add more.",
-            duration: 6500,
           });
         } else {
           toast.success("Image added to workspace", {
             description: "Use batch tools on Operations, or open this asset to enhance one-by-one.",
-            duration: 5000,
           });
         }
       }
@@ -328,43 +324,44 @@ export default function ImageGenerationPage() {
                   ))}
                 </select>
               </div>
-              {provider === "openai" ? (
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Quality</span>
-                  <select
-                    value={quality}
-                    onChange={(e) => setQuality(e.target.value as "low" | "medium" | "high")}
-                    disabled={misconfigured}
-                    className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-50"
-                  >
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Output file</span>
-                  <p className="mt-2 text-sm text-neutral-600">Gemini returns image bytes; we store as PNG.</p>
-                </div>
-              )}
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Quality</span>
+                <select
+                  value={quality}
+                  onChange={(e) => setQuality(e.target.value as "low" | "medium" | "high")}
+                  disabled={misconfigured}
+                  className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-50"
+                >
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+                {provider === "gemini" ? (
+                  <p className="mt-1.5 text-[11px] text-neutral-500">
+                    Same values as OpenAI are sent to the API; Gemini image models may not treat tiers identically.
+                  </p>
+                ) : null}
+              </div>
             </div>
 
-            {provider === "openai" && (
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">File format</span>
-                <select
-                  value={outputFormat}
-                  onChange={(e) => setOutputFormat(e.target.value as "png" | "jpeg" | "webp")}
-                  disabled={misconfigured}
-                  className="mt-2 w-full max-w-xs rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-50"
-                >
-                  <option value="png">PNG</option>
-                  <option value="jpeg">JPEG</option>
-                  <option value="webp">WebP</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">File format</span>
+              <select
+                value={outputFormat}
+                onChange={(e) => setOutputFormat(e.target.value as "png" | "jpeg" | "webp")}
+                disabled={misconfigured}
+                className="mt-2 w-full max-w-xs rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-black focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-50"
+              >
+                <option value="png">PNG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="webp">WebP</option>
+              </select>
+              {provider === "gemini" ? (
+                <p className="mt-1.5 text-[11px] text-neutral-500">
+                  Request field matches OpenAI; saved file uses PNG because Gemini returns PNG image data.
+                </p>
+              ) : null}
+            </div>
 
             <div className="rounded-xl border border-dashed border-neutral-200 bg-neutral-50/80 px-4 py-3">
               <p className="text-xs font-semibold text-neutral-700">Phase 2 (not enabled)</p>

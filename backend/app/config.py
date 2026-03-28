@@ -74,6 +74,8 @@ class Settings(BaseSettings):
 
     # /images/.../suggest-filename — budget multimodal model (text + image). Override if Google renames models.
     GEMINI_FILENAME_SUGGEST_MODEL: str = "gemini-2.5-flash-lite"
+    # /api/image-generation/compose (Gemini) — text-only JSON intent; keep aligned with a current Flash model id.
+    GEMINI_INTENT_MODEL: str = "gemini-2.5-flash-lite"
 
     @staticmethod
     def _database_host(url: str) -> str:

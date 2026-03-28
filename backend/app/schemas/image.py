@@ -50,6 +50,13 @@ class EnhancementRequest(BaseModel):
         default=None,
         description="Roll in radians from browser Sobel estimator; used with auto perspective + cloud plate.",
     )
+    improve_input_version_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Required when provider is openai or gemini: ImageVersion id from POST .../local-improve "
+            "(browser Improve output). Cloud models always enhance this raster, never the raw upload."
+        ),
+    )
 
 
 class UpscaleRequest(BaseModel):

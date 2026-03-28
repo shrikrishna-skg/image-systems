@@ -37,9 +37,12 @@ class ImageGenerationGenerateRequest(BaseModel):
     model: str = Field(..., min_length=2, max_length=128)
     quality: str = Field(
         "high",
-        description="OpenAI image quality: low | medium | high (ignored when provider=gemini).",
+        description="Image quality: low | medium | high — sent to OpenAI; mirrored on Gemini for request parity (Gemini may not apply all tiers).",
     )
-    output_format: str = Field("png", description="png, jpeg, or webp for OpenAI output.")
+    output_format: str = Field(
+        "png",
+        description="png, jpeg, or webp — controls OpenAI raster output; mirrored on Gemini for request parity (Gemini bytes are PNG; saved extension stays .png).",
+    )
     run_enhancement_pipeline: bool = Field(
         False,
         description="Phase 2: run full enhancement after generation — not implemented yet.",

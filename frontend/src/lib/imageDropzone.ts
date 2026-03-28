@@ -32,12 +32,10 @@ export function toastWorkspaceDropRejected(fileRejections: FileRejection[]) {
   if (isTooMany) {
     toast.error("Too many files in one drop", {
       description: "Add files in smaller groups, or we’ll only take the first batch that fits your workspace.",
-      duration: 6500,
     });
     return;
   }
   toast.error("Some files weren’t added", {
     description: formatRejectionSummary(fileRejections),
-    duration: 7000,
   });
 }

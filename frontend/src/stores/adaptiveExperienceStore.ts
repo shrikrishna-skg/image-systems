@@ -136,7 +136,6 @@ export const useAdaptiveExperienceStore = create<AdaptiveExperienceState>((set, 
       });
       toast.success("Workspace calibrated", {
         description: "Weighted signals from your runs reached full confidence. Review Adaptive workspace in Settings.",
-        duration: 7000,
       });
     }
   },
@@ -170,7 +169,6 @@ export const useAdaptiveExperienceStore = create<AdaptiveExperienceState>((set, 
     useImageStore.getState().applyPipelineExperienceTier(2);
     toast.success("Adaptive experience on", {
       description: "Tier 2 defaults are active—tuned lighting, smart perspective, and upscale. Roll back anytime in Settings.",
-      duration: 6500,
     });
   },
 

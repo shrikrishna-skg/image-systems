@@ -222,7 +222,6 @@ export default function DashboardPage() {
     if (!bulkRunningRef.current) {
       toast.message("Stopped", {
         description: "This tab is no longer watching the job. Cloud work may still finish in the background.",
-        duration: 5500,
       });
     }
   }, [stopPolling]);
@@ -373,7 +372,6 @@ export default function DashboardPage() {
           description: devSkipUpscale
             ? "Replicate is optional while local dev skip-upscale is enabled."
             : "Add a Replicate token too for upscaling, or run npm run dev (skip-upscale enabled by default).",
-          duration: 8000,
         });
         return;
       }
@@ -556,7 +554,6 @@ export default function DashboardPage() {
       startPolling(job.id, imageId);
       toast.success("Processing started!", {
         description: "Browser Improve finished — cloud enhance + upscale are running.",
-        duration: 4800,
       });
     } catch (err: unknown) {
       toastProcessingError(err, "Couldn't start processing");
@@ -834,7 +831,7 @@ export default function DashboardPage() {
           } else if (okN === 0) {
             toast.error(`Batch finished · all ${failN} failed.`);
           } else {
-            toast.message(`Batch finished · ${okN} ok, ${failN} failed`, { duration: 9000 });
+            toast.message(`Batch finished · ${okN} ok, ${failN} failed`);
           }
         }
       }
@@ -852,7 +849,6 @@ export default function DashboardPage() {
             batchPartialSuccessCount > 0
               ? `${batchPartialSuccessCount} asset(s) finished; no more will start from this run. In-flight API jobs may still complete.`
               : "No further assets will run from this batch.",
-          duration: 7000,
         });
       }
     }

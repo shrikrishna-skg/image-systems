@@ -93,7 +93,6 @@ export default function SettingsPage() {
           setKeysBanner("offline");
           toast.error("Cannot reach the API", {
             description: "Start the backend from the repo root: npm run dev (or npm run backend in another terminal).",
-            duration: 8000,
           });
         } else if (err.response.status === 401 || err.response.status === 403) {
           setKeysBanner("auth");
@@ -145,7 +144,6 @@ export default function SettingsPage() {
       if (ax.response?.status === 503) {
         toast.error("Provider unreachable", {
           description: `${detail} You can enable “Save without verifying” below, then save again.`,
-          duration: 8000,
         });
       } else {
         toast.error(detail);

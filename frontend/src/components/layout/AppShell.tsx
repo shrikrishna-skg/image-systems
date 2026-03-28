@@ -6,59 +6,21 @@ import {
   History,
   LogOut,
   Building2,
-  Cloud,
-  Database,
   Menu,
   X,
   Globe,
   Wand2,
 } from "lucide-react";
-import { isPlaceholderApiBaseUrl } from "../../lib/apiBase";
 import { isStorageOnlyMode } from "../../lib/storageOnlyMode";
-import { usesLocalOrStorageAuth } from "../../lib/supabase";
 import { useAuthStore } from "../../stores/authStore";
-import { useServerPolicyStore, type ApiConnectionStatus } from "../../stores/serverPolicyStore";
 import SonarAmbient from "./SonarAmbient";
 import { ImagesystemsLogo } from "../brand/ImagesystemsLogo";
 import { BrandWordmark } from "../brand/BrandWordmark";
 
 const storageOnlyShell = isStorageOnlyMode();
 
-function statusDotClass(s: ApiConnectionStatus): string {
-  switch (s) {
-    case "ok":
-      return "bg-emerald-500";
-    case "offline":
-      return "bg-red-500";
-    case "misconfigured":
-      return "bg-amber-500";
-    case "pending":
-      return "bg-neutral-300 animate-pulse";
-    default:
-      return "bg-neutral-300";
-  }
-}
-
-function apiStatusLabel(s: ApiConnectionStatus): string {
-  switch (s) {
-    case "ok":
-      return "API reachable";
-    case "offline":
-      return "API unreachable";
-    case "misconfigured":
-      return "API URL not set (Vercel env)";
-    case "pending":
-      return "Checking API…";
-    case "skipped":
-      return "Browser-only mode";
-    default:
-      return "—";
-  }
-}
-
 export default function AppShell() {
   const { user, logout, isAuthenticated } = useAuthStore();
-  const apiConnectionStatus = useServerPolicyStore((s) => s.apiConnectionStatus);
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -84,12 +46,6 @@ export default function AppShell() {
     await logout();
     navigate("/login", { replace: true });
   };
-
-  const showCloudStackStatus = !storageOnlyShell && isAuthenticated;
-  const supabaseHosted = !usesLocalOrStorageAuth;
-  const apiLineStatus: ApiConnectionStatus = isPlaceholderApiBaseUrl()
-    ? "misconfigured"
-    : apiConnectionStatus;
 
   const navItems = [
     {
@@ -208,46 +164,6 @@ export default function AppShell() {
             </span>
           )}
         </div>
-
-        {showCloudStackStatus && (
-          <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50/50 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
-              Online stack
-            </p>
-            <p className="text-[10px] leading-snug text-neutral-600">
-              <strong className="text-neutral-800">Vercel</strong> hosts this app.{" "}
-              <strong className="text-neutral-800">Supabase</strong> stores accounts (Postgres).{" "}
-              <strong className="text-neutral-800">Your API</strong> runs jobs.
-            </p>
-            <div className="flex items-start gap-2 text-[11px] text-neutral-700">
-              <Cloud className="w-3.5 h-3.5 shrink-0 mt-0.5 text-neutral-500" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`h-2 w-2 shrink-0 rounded-full ${statusDotClass(apiLineStatus)}`}
-                    aria-hidden
-                  />
-                  <span className="font-medium text-neutral-900">Backend API</span>
-                </div>
-                <p className="text-[10px] text-neutral-500 mt-0.5 leading-snug">{apiStatusLabel(apiLineStatus)}</p>
-              </div>
-            </div>
-            {supabaseHosted && (
-              <div className="flex items-start gap-2 text-[11px] text-neutral-700">
-                <Database className="w-3.5 h-3.5 shrink-0 mt-0.5 text-neutral-500" aria-hidden />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                    <span className="font-medium text-neutral-900">Supabase</span>
-                  </div>
-                  <p className="text-[10px] text-neutral-500 mt-0.5 leading-snug">
-                    Auth session active — database connected for sign-in
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
         <nav className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {navItems.map(({ path, label, hint, icon: Icon }) => {

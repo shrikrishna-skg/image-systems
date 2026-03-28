@@ -165,12 +165,10 @@ export default function DownloadPanel({
       const mb = (out.size / (1024 * 1024)).toFixed(1);
       toast.success("Download started", {
         description: `${filename} · about ${mb} MB`,
-        duration: 4000,
       });
     } catch {
       toast.error("Failed to prepare download", {
         description: "Try another format, a smaller max size, or PNG if WebP isn’t supported.",
-        duration: 6500,
       });
     } finally {
       setDownloadingKey(null);
@@ -194,7 +192,6 @@ export default function DownloadPanel({
       const modelBit = data.model ? ` · ${data.model}` : "";
       toast.success("AI filename refreshed", {
         description: `${costBit}${modelBit}. Edit the base below if you like.`,
-        duration: 5000,
       });
     } catch (err: unknown) {
       toastProcessingError(err, "AI suggest failed");
