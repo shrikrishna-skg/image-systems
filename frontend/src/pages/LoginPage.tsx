@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PasswordInput } from "../components/ui/PasswordInput";
 import { useAuthStore } from "../stores/authStore";
-import { Sparkles, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
+import { BrandWordmark } from "../components/brand/BrandWordmark";
+import { ImagesystemsLogo } from "../components/brand/ImagesystemsLogo";
 import { toast } from "sonner";
 
 const localDevUi =
@@ -89,15 +91,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center gap-3 mb-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black text-white ring-1 ring-black/10">
-              <Sparkles className="w-6 h-6" strokeWidth={2} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-50 ring-1 ring-neutral-200">
+              <ImagesystemsLogo className="h-9 w-9" decorative />
             </div>
-            <div className="text-left">
-              <h1 className="text-2xl font-semibold tracking-tight text-black">ImageEnhance Pro</h1>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mt-0.5">
-                Listing studio
-              </p>
-            </div>
+            <BrandWordmark variant="hero" titleAs="h1" />
           </div>
           <p className="text-neutral-600 text-sm leading-relaxed max-w-sm mx-auto flex items-start justify-center gap-2">
             <Building2 className="w-4 h-4 text-black shrink-0 mt-0.5" strokeWidth={2} />

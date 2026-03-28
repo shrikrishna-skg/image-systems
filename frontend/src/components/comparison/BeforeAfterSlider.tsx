@@ -1,6 +1,25 @@
 import { useState, useRef, useCallback, useEffect, type CSSProperties } from "react";
 import { useAuthenticatedImage } from "../../hooks/useAuthenticatedImage";
-import { Loader2, Columns2, SplitSquareVertical, Maximize2, HardDrive } from "lucide-react";
+import {
+  Loader2,
+  Columns2,
+  SplitSquareVertical,
+  Maximize2,
+  HardDrive,
+  ChevronDown,
+  Download,
+} from "lucide-react";
+import { toast } from "sonner";
+import client from "../../api/client";
+import { suggestFilename } from "../../api/images";
+import { getLocalBlob } from "../../lib/localImageStore";
+import { isStorageOnlyMode } from "../../lib/storageOnlyMode";
+import {
+  appendSizeToFilename,
+  buildExportStem,
+  downloadFilenameStem,
+  exportDownloadBlob,
+} from "../../lib/downloadExport";
 import FullscreenImageRegion from "../media/FullscreenImageRegion";
 import OptimizedImage from "../media/OptimizedImage";
 
@@ -18,8 +37,18 @@ interface Props {
   resultVersionId: string;
   originalMeta?: ComparisonSizeMeta | null;
   resultMeta?: ComparisonSizeMeta | null;
+  /** Export stem hint (pipeline-style naming for the enhanced file). */
+  resultVersionType?: string | null;
+  /** When set, quick download uses AI basename (same as Download panel) when the API is available. */
+  aiNamingProvider?: "openai" | "gemini" | null;
+  originalFilename?: string;
   /** Larger vertical budget when preview is in browser fullscreen. */
   viewportMode?: "default" | "fullscreen";
+  /**
+   * Which layout to show first; also reapplied when imageId / resultVersionId changes
+   * (e.g. workspace batch — pick another asset and land on side-by-side again).
+   */
+  defaultViewMode?: ComparisonViewMode;
 }
 
 function formatDimensions(w: number | null, h: number | null): string {
@@ -79,11 +108,14 @@ function SizeComparisonCard({
   result,
   intrinsicBefore,
   intrinsicAfter,
+  embedded = false,
 }: {
   original: ComparisonSizeMeta;
   result: ComparisonSizeMeta;
   intrinsicBefore: { w: number; h: number } | null;
   intrinsicAfter: { w: number; h: number } | null;
+  /** Lighter chrome when nested inside a collapsible. */
+  embedded?: boolean;
 }) {
   const ow = original.width ?? intrinsicBefore?.w ?? null;
   const oh = original.height ?? intrinsicBefore?.h ?? null;
@@ -116,12 +148,29 @@ function SizeComparisonCard({
   const oMp = formatMegapixels(ow, oh);
   const rMp = formatMegapixels(rw, rh);
 
+  const shell = embedded
+    ? "pt-1"
+    : "rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/80 to-white px-4 py-3";
+
+  const innerBase = embedded
+    ? "rounded-lg border border-slate-200/60 bg-white px-2.5 py-2"
+    : "rounded-xl border border-slate-200/80 bg-white px-3 py-2.5";
+  const innerEnhanced = embedded
+    ? "rounded-lg border border-neutral-200/60 bg-neutral-50/90 px-2.5 py-2"
+    : "rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5";
+  const innerChange = embedded
+    ? "rounded-lg border border-dashed border-slate-200/70 bg-slate-50/40 px-2.5 py-2 sm:flex sm:flex-col sm:justify-center"
+    : "rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-2.5 sm:flex sm:flex-col sm:justify-center";
+  const labelMb = embedded ? "mb-1" : "mb-2";
+
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/80 to-white px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3">Size comparison</p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <div className="rounded-xl border border-slate-200/80 bg-white px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Original</p>
+    <div className={shell}>
+      {!embedded && (
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-3">Size comparison</p>
+      )}
+      <div className={`grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3`}>
+        <div className={innerBase}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider text-slate-400 ${labelMb}`}>Original</p>
           <div className="flex items-start gap-2 text-sm text-slate-800">
             <Maximize2 className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" strokeWidth={2} />
             <div>
@@ -135,8 +184,8 @@ function SizeComparisonCard({
           </div>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">Enhanced</p>
+        <div className={innerEnhanced}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider text-neutral-600 ${labelMb}`}>Enhanced</p>
           <div className="flex items-start gap-2 text-sm text-neutral-900">
             <Maximize2 className="h-4 w-4 shrink-0 text-neutral-500 mt-0.5" strokeWidth={2} />
             <div>
@@ -155,8 +204,8 @@ function SizeComparisonCard({
           )}
         </div>
 
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-2.5 sm:flex sm:flex-col sm:justify-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Change</p>
+        <div className={innerChange}>
+          <p className={`text-[10px] font-semibold uppercase tracking-wider text-slate-400 ${labelMb}`}>Change</p>
           <ul className="space-y-1.5 text-sm text-slate-700">
             {pixelDelta && (
               <li>
@@ -193,18 +242,28 @@ export default function BeforeAfterSlider({
   resultVersionId,
   originalMeta,
   resultMeta,
+  resultVersionType = null,
+  aiNamingProvider = null,
+  originalFilename = "photo",
   viewportMode = "default",
+  defaultViewMode = "slider",
 }: Props) {
-  const [viewMode, setViewMode] = useState<ComparisonViewMode>("sideBySide");
+  const [viewMode, setViewMode] = useState<ComparisonViewMode>(defaultViewMode);
   const [sliderPos, setSliderPos] = useState(50);
   const [containerWidth, setContainerWidth] = useState<number | null>(null);
   const [intrinsicBefore, setIntrinsicBefore] = useState<{ w: number; h: number } | null>(null);
   const [intrinsicAfter, setIntrinsicAfter] = useState<{ w: number; h: number } | null>(null);
+  const [enhancedDownloading, setEnhancedDownloading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const storageOnly = isStorageOnlyMode();
 
   const oMeta: ComparisonSizeMeta = originalMeta ?? { width: null, height: null, fileSizeBytes: null };
   const rMeta: ComparisonSizeMeta = resultMeta ?? { width: null, height: null, fileSizeBytes: null };
+
+  useEffect(() => {
+    setViewMode(defaultViewMode);
+  }, [imageId, resultVersionId, defaultViewMode]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -273,6 +332,103 @@ export default function BeforeAfterSlider({
     }
   }, []);
 
+  const downloadEnhanced = useCallback(async () => {
+    setEnhancedDownloading(true);
+    try {
+      let blob: Blob;
+      if (storageOnly) {
+        const b = await getLocalBlob(imageId, resultVersionId);
+        if (!b) throw new Error("Not found");
+        blob = b;
+      } else {
+        const res = await client.get(`/images/${imageId}/download`, {
+          params: { version: resultVersionId },
+          responseType: "blob",
+        });
+        blob = res.data;
+      }
+
+      const rw = rMeta.width ?? intrinsicAfter?.w ?? null;
+      const rh = rMeta.height ?? intrinsicAfter?.h ?? null;
+      let stem: string;
+      if (aiNamingProvider && !storageOnly) {
+        try {
+          const data = await suggestFilename(imageId, {
+            version: resultVersionId,
+            provider: aiNamingProvider,
+          });
+          stem = buildExportStem({
+            preset: "pipeline",
+            customBase: "",
+            aiBase: data.basename,
+            originalFilename,
+            kind: "version",
+            versionType: resultVersionType ?? undefined,
+            width: rw,
+            height: rh,
+          });
+        } catch {
+          stem = downloadFilenameStem("version", resultVersionType ?? undefined, rw, rh);
+        }
+      } else {
+        stem = downloadFilenameStem("version", resultVersionType ?? undefined, rw, rh);
+      }
+      const { blob: out, extension } = await exportDownloadBlob(blob, "png_lossless", "full");
+      const filename = appendSizeToFilename(stem, "full", extension);
+
+      const blobUrl = URL.createObjectURL(out);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+
+      const mb = (out.size / (1024 * 1024)).toFixed(1);
+      toast.success("Download started", {
+        description: `${filename} · about ${mb} MB`,
+        duration: 4000,
+      });
+    } catch {
+      toast.error("Download failed", {
+        description: "Use Download results below for more format options.",
+        duration: 5000,
+      });
+    } finally {
+      setEnhancedDownloading(false);
+    }
+  }, [
+    storageOnly,
+    imageId,
+    resultVersionId,
+    rMeta.width,
+    rMeta.height,
+    intrinsicAfter?.w,
+    intrinsicAfter?.h,
+    resultVersionType,
+    aiNamingProvider,
+    originalFilename,
+  ]);
+
+  const enhancedDownloadButton = (
+    <button
+      type="button"
+      onClick={() => void downloadEnhanced()}
+      disabled={enhancedDownloading || loading}
+      aria-label="Download enhanced image"
+      title="Download enhanced image (PNG lossless, full size; AI filename when keys are configured)"
+      className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-black transition-colors hover:bg-neutral-50 disabled:pointer-events-none disabled:opacity-50"
+    >
+      {enhancedDownloading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} aria-hidden />
+      ) : (
+        <Download className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+      )}
+      <span className="hidden sm:inline">Download</span>
+    </button>
+  );
+
   if (loading || !beforeUrl || !afterUrl) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -297,22 +453,48 @@ export default function BeforeAfterSlider({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-slate-500">
-          <span className="font-medium text-slate-700">Compare views</span>
-          {viewMode === "slider" ? " — drag the divider" : " — equal panels, both images scaled to fill"}
+    <div className="space-y-2 sm:space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[11px] text-slate-600 sm:text-xs leading-snug max-w-xl">
+          <span className="font-semibold text-slate-800">Compare</span>
+          {viewMode === "sideBySide" ? (
+            <>
+              {" "}
+              · original and improved <span className="text-slate-700">side by side</span>. Use{" "}
+              <span className="font-medium text-slate-700">Slider</span> for a draggable before/after wipe.
+            </>
+          ) : (
+            <>
+              {" "}
+              · drag the divider. Use <span className="font-medium text-slate-700">Side by side</span> for two
+              full panels.
+            </>
+          )}
         </p>
         <div
-          className="inline-flex rounded-xl border border-slate-200/90 bg-slate-50 p-1"
+          className="inline-flex shrink-0 rounded-lg border border-slate-200/80 bg-slate-50 p-0.5"
           role="group"
           aria-label="Comparison layout"
         >
           <button
             type="button"
+            onClick={() => setViewMode("sideBySide")}
+            aria-pressed={viewMode === "sideBySide"}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all sm:px-3 sm:text-xs ${
+              viewMode === "sideBySide"
+                ? "bg-black text-white"
+                : "text-neutral-600 hover:text-black"
+            }`}
+          >
+            <Columns2 className="h-3.5 w-3.5" strokeWidth={2} />
+            <span className="hidden sm:inline">Side by side</span>
+            <span className="sm:hidden">2-up</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setViewMode("slider")}
             aria-pressed={viewMode === "slider"}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all sm:px-3 sm:text-xs ${
               viewMode === "slider"
                 ? "bg-black text-white"
                 : "text-neutral-600 hover:text-black"
@@ -321,35 +503,32 @@ export default function BeforeAfterSlider({
             <SplitSquareVertical className="h-3.5 w-3.5" strokeWidth={2} />
             Slider
           </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("sideBySide")}
-            aria-pressed={viewMode === "sideBySide"}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-              viewMode === "sideBySide"
-                ? "bg-black text-white"
-                : "text-neutral-600 hover:text-black"
-            }`}
-          >
-            <Columns2 className="h-3.5 w-3.5" strokeWidth={2} />
-            Side by side
-          </button>
         </div>
       </div>
 
-      <SizeComparisonCard
-        original={oMeta}
-        result={rMeta}
-        intrinsicBefore={intrinsicBefore}
-        intrinsicAfter={intrinsicAfter}
-      />
+      <details className="group rounded-lg border border-slate-200/60 bg-slate-50/30 open:border-slate-200/80 open:bg-slate-50/50">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-[11px] font-medium text-slate-700 select-none [&::-webkit-details-marker]:hidden">
+          <span>Technical details — dimensions, file size, deltas</span>
+          <ChevronDown
+            className="h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 group-open:rotate-180"
+            aria-hidden
+          />
+        </summary>
+        <div className="border-t border-slate-200/50 px-2 pb-2 pt-1 sm:px-3 sm:pb-3">
+          <SizeComparisonCard
+            original={oMeta}
+            result={rMeta}
+            intrinsicBefore={intrinsicBefore}
+            intrinsicAfter={intrinsicAfter}
+            embedded
+          />
+        </div>
+      </details>
 
       {viewMode === "sideBySide" ? (
         <div className="space-y-2">
-          <p className="text-[11px] text-slate-600 leading-relaxed px-0.5">
-            Both panels are the same size. Each image is scaled with{" "}
-            <strong className="text-slate-800">contain</strong> so it fills the panel as much as possible—so you
-            can compare composition side by side. (Pixel dimensions in the labels still reflect each file.)
+          <p className="text-[10px] text-slate-500 leading-snug px-0.5">
+            Same-size panels · <strong className="text-slate-700">contain</strong> fit · labels show true pixels.
           </p>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-200/90 lg:overflow-hidden">
             <figure className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50 lg:rounded-none lg:border-0 lg:border-r lg:border-slate-200/90">
@@ -381,24 +560,27 @@ export default function BeforeAfterSlider({
               </FullscreenImageRegion>
             </figure>
             <figure className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-neutral-50 lg:rounded-none lg:border-0">
-              <figcaption className="border-b border-neutral-200 bg-white px-3 py-2.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-black">
-                  Enhanced
-                </span>
-                <p className="text-xs font-data text-slate-800 tabular-nums mt-1">
-                  {afterDims
-                    ? `${afterDims.w} × ${afterDims.h} px${
-                        formatMegapixels(afterDims.w, afterDims.h)
-                          ? ` · ${formatMegapixels(afterDims.w, afterDims.h)}`
-                          : ""
-                      }`
-                    : "Reading dimensions…"}
-                  {rMeta.scaleFactor != null && rMeta.scaleFactor > 1 && (
-                    <span className="block text-[11px] font-semibold text-black mt-1">
-                      Upscale ×{rMeta.scaleFactor}
-                    </span>
-                  )}
-                </p>
+              <figcaption className="flex items-start justify-between gap-3 border-b border-neutral-200 bg-white px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-black">
+                    Enhanced
+                  </span>
+                  <p className="text-xs font-data text-slate-800 tabular-nums mt-1">
+                    {afterDims
+                      ? `${afterDims.w} × ${afterDims.h} px${
+                          formatMegapixels(afterDims.w, afterDims.h)
+                            ? ` · ${formatMegapixels(afterDims.w, afterDims.h)}`
+                            : ""
+                        }`
+                      : "Reading dimensions…"}
+                    {rMeta.scaleFactor != null && rMeta.scaleFactor > 1 && (
+                      <span className="block text-[11px] font-semibold text-black mt-1">
+                        Upscale ×{rMeta.scaleFactor}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                {enhancedDownloadButton}
               </figcaption>
               <FullscreenImageRegion className="flex min-h-0 flex-1 flex-col">
                 <div className="box-border w-full bg-neutral-100/80 p-2 sm:p-3" style={sideBySidePaneStyle}>
@@ -417,11 +599,14 @@ export default function BeforeAfterSlider({
         </div>
       ) : (
         <>
-          <div className="flex justify-between text-[11px] font-semibold uppercase tracking-wider">
+          <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider">
             <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-slate-600">Original</span>
-            <span className="rounded-lg bg-neutral-100 px-2.5 py-1 text-black border border-neutral-200">
-              Enhanced
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-neutral-100 px-2.5 py-1 text-black border border-neutral-200">
+                Enhanced
+              </span>
+              {enhancedDownloadButton}
+            </div>
           </div>
           <FullscreenImageRegion className="w-full">
             <div

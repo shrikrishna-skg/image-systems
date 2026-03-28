@@ -39,9 +39,11 @@ async def _update_job(db: AsyncSession, job_id: str, **kwargs):
         await db.commit()
 
 
-async def _get_api_key(db: AsyncSession, api_key_id: str) -> str:
-    """Decrypt and return API key."""
-    result = await db.execute(select(ApiKey).where(ApiKey.id == api_key_id))
+async def _get_api_key_for_user(db: AsyncSession, api_key_id: str, user_id: str) -> str:
+    """Decrypt API key only if it belongs to the job owner (defense in depth)."""
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.id == api_key_id, ApiKey.user_id == user_id)
+    )
     record = result.scalar_one_or_none()
     if not record:
         raise ValueError("API key not found")
@@ -191,6 +193,36 @@ def _resolve_enhance_image_path(params: dict, source_path: str) -> tuple[str, st
     return tmp, tmp
 
 
+async def _resolve_full_pipeline_enhance_source(
+    db: AsyncSession, image: Image, params: dict
+) -> tuple[str, dict]:
+    """
+    OpenAI/Gemini always enhance the browser Improve output, not the raw upload.
+    Perspective plate is skipped — geometry is already baked into the Improve raster.
+    """
+    improve_vid = params.get("improve_input_version_id")
+    if not improve_vid:
+        raise ValueError(
+            "improve_input_version_id is required: run browser Improve and save it before OpenAI/Gemini."
+        )
+    result = await db.execute(
+        select(ImageVersion).where(
+            ImageVersion.id == improve_vid,
+            ImageVersion.image_id == image.id,
+        )
+    )
+    v = result.scalar_one_or_none()
+    if not v:
+        raise ValueError("improve_input_version_id not found for this image")
+    if (v.provider or "").lower() != "improve":
+        raise ValueError("improve_input_version_id must reference a browser Improve version (provider=improve)")
+    sp = (v.storage_path or "").strip()
+    if not sp:
+        raise ValueError("Improve version has no image file on disk")
+    plate_params = {**params, "perspective_plate": False, "auto_rotation_rad": None}
+    return sp, plate_params
+
+
 async def run_enhance_job(job_id: str):
     """Enhance an image using OpenAI or Gemini. Runs as async background task."""
     logger.info(f"Starting enhance job: {job_id}")
@@ -209,13 +241,14 @@ async def run_enhance_job(job_id: str):
             image = result.scalar_one_or_none()
             if not image:
                 raise ValueError(f"Image not found: {job.image_id}")
+            if image.user_id != job.user_id:
+                raise ValueError("Image does not belong to job owner")
             source_path = image.storage_path
             logger.info(f"Source image: {source_path}")
 
-            # Decrypt API key
-            api_key = await _get_api_key(db, params["api_key_id"])
+            api_key = await _get_api_key_for_user(db, params["api_key_id"], job.user_id)
             await _update_job(db, job_id, progress_pct=20)
-            logger.info(f"API key decrypted, provider={params['provider']}")
+            logger.info("Using stored API key for provider=%s", params["provider"])
 
             # Call AI service in thread pool
             provider = params["provider"]
@@ -349,6 +382,8 @@ async def run_upscale_job(job_id: str):
             image = result.scalar_one_or_none()
             if not image:
                 raise ValueError(f"Image not found: {job.image_id}")
+            if image.user_id != job.user_id:
+                raise ValueError("Image does not belong to job owner")
 
             # Use latest version if available
             result = await db.execute(
@@ -360,7 +395,7 @@ async def run_upscale_job(job_id: str):
             latest_version = result.scalar_one_or_none()
             source_path = latest_version.storage_path if latest_version else image.storage_path
 
-            api_key = await _get_api_key(db, params["api_key_id"])
+            api_key = await _get_api_key_for_user(db, params["api_key_id"], job.user_id)
             await _update_job(db, job_id, progress_pct=20)
 
             scale_factor = params.get("scale_factor", 2)
@@ -446,15 +481,17 @@ async def run_full_pipeline_job(job_id: str):
             image = result.scalar_one_or_none()
             if not image:
                 raise ValueError(f"Image not found: {job.image_id}")
-            source_path = image.storage_path
+            if image.user_id != job.user_id:
+                raise ValueError("Image does not belong to job owner")
 
-            # --- Step 1: Enhance ---
+            # --- Step 1: Enhance (input = browser Improve raster, not raw upload) ---
             provider = params["provider"]
-            enhance_api_key = await _get_api_key(db, params["enhance_api_key_id"])
+            enhance_api_key = await _get_api_key_for_user(db, params["enhance_api_key_id"], job.user_id)
             await _update_job(db, job_id, progress_pct=10)
-            logger.info(f"Step 1: Enhancing with {provider}")
+            logger.info("Step 1: Enhancing with %s (source=browser Improve version)", provider)
 
-            enhance_input, plate_tmp = _resolve_enhance_image_path(params, source_path)
+            source_path, plate_params = await _resolve_full_pipeline_enhance_source(db, image, params)
+            enhance_input, plate_tmp = _resolve_enhance_image_path(plate_params, source_path)
             enhance_done = asyncio.Event()
             enhance_pulse = asyncio.create_task(
                 _stall_progress_pulse(
@@ -555,7 +592,7 @@ async def run_full_pipeline_job(job_id: str):
             rid = params.get("replicate_api_key_id")
             if not rid:
                 raise ValueError("Missing replicate_api_key_id in job params")
-            replicate_api_key = await _get_api_key(db, rid)
+            replicate_api_key = await _get_api_key_for_user(db, rid, job.user_id)
 
             upscale_done = asyncio.Event()
             upscale_pulse = asyncio.create_task(

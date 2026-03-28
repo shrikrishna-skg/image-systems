@@ -98,6 +98,8 @@ export interface FullPipelineRequest {
   output_format: string;
   /** Radians, browser-estimated; server builds perspective plate + corner-outpaint prompt for OpenAI/Gemini. */
   auto_rotation_rad?: number | null;
+  /** Browser Improve version id — required for OpenAI/Gemini pipeline (Improve runs first, then AI). */
+  improve_input_version_id?: string | null;
 }
 
 export interface CostEstimate {

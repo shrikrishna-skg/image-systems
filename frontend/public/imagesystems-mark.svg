@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56" fill="none" aria-label="ImageSystems">
+  <title>ImageSystems</title>
+  <g>
+    <g transform="rotate(0 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#7DD3FC"/></g>
+    <g transform="rotate(45 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#4ADE80"/></g>
+    <g transform="rotate(90 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#FB923C"/></g>
+    <g transform="rotate(135 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#F87171"/></g>
+    <g transform="rotate(180 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#C084FC"/></g>
+    <g transform="rotate(225 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#3B82F6"/></g>
+    <g transform="rotate(270 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#2DD4BF"/></g>
+    <g transform="rotate(315 28 28)"><rect x="23.875" y="5.75" width="8.25" height="16.9" rx="4.125" fill="#FBBF24"/></g>
+  </g>
+  <circle cx="28" cy="28" r="5.35" fill="#fff"/>
+</svg>

@@ -38,7 +38,8 @@ const PROVIDERS = [
   {
     id: "gemini",
     name: "Google Gemini",
-    description: "Multimodal enhancement (generateContent + image output). Keys verified via Google API.",
+    description:
+      "Multimodal enhancement (generateContent + image output). After saving, use Test saved key: the backend calls Google’s model list API; if it succeeds, your key works. If Google returns permission errors, enable the Generative Language API for the key’s project in Google Cloud / AI Studio.",
     placeholder: "AIza... or key from AI Studio",
     models: GEMINI_IMAGE_MODELS,
   },
@@ -48,6 +49,14 @@ const PROVIDERS = [
     description:
       "Real-ESRGAN upscaling. Requires a funded Replicate account (GPU runs are metered). Token is verified via the account API.",
     placeholder: "r8_...",
+    models: [] as readonly string[],
+  },
+  {
+    id: "zyte",
+    name: "Zyte API",
+    description:
+      "Optional engine for Import from URL: headless browser HTML (JavaScript rendered). Without a key, scans use plain HTTP. Test uses a small HTTP extract to verify your key.",
+    placeholder: "Paste Zyte API key",
     models: [] as readonly string[],
   },
 ] as const;
@@ -240,7 +249,7 @@ export default function SettingsPage() {
 
   if (storageOnly) {
     return (
-      <div className="max-w-3xl mx-auto p-6 md:p-8 pb-16">
+      <div className="max-w-3xl mx-auto min-w-0 px-3 py-4 sm:px-6 sm:py-6 md:p-8 pb-16">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black mb-2">
           Cloud models
         </p>
@@ -273,7 +282,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 md:p-8 pb-16">
+    <div className="max-w-3xl mx-auto min-w-0 px-3 py-4 sm:px-6 sm:py-6 md:p-8 pb-16">
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black mb-2">
         Integrations
       </p>
@@ -372,8 +381,11 @@ export default function SettingsPage() {
           <p className="mt-3 text-slate-600 mb-4 leading-relaxed max-w-2xl">
             Bring your own keys for enhancement and upscaling. Each save is{" "}
             <strong className="text-slate-800">checked against the provider</strong> unless you opt out below.
-            Keys are encrypted at rest (AES-256), are not written to application logs, and are only decrypted on
-            the API server—never exposed to the browser or Supabase client libraries.
+            On the hosted app, the browser sends your key once to your deployed API over HTTPS; the API encrypts it
+            and stores ciphertext in your <strong className="text-slate-800">Supabase Postgres</strong>{" "}
+            <code className="rounded bg-slate-100 px-1 py-0.5 text-xs font-mono text-slate-800">api_keys</code>{" "}
+            row (never in browser storage and not readable via the Supabase JS client). Only the API decrypts keys
+            when running jobs or validation.
           </p>
 
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm mb-8">
@@ -612,9 +624,10 @@ export default function SettingsPage() {
 
       <div className="mt-8 p-5 bg-neutral-100 border border-neutral-300 rounded-2xl space-y-2">
         <p className="text-sm text-neutral-800 leading-relaxed">
-          <strong className="text-black">Security:</strong> Keys are encrypted at rest (Fernet / AES-128-CBC +
-          HMAC in transit to storage). They are only decrypted server-side for jobs and validation. Logs record
-          provider and success/failure — never the secret.
+          <strong className="text-black">Security:</strong> At rest, secrets are Fernet-encrypted before the
+          insert into Postgres. RLS blocks direct reads of <code className="text-xs font-mono">api_keys</code> from
+          anon/authenticated Supabase clients; your API uses the database connection string and decrypts only on the
+          server for jobs and tests. Logs record provider and success/failure — never the secret.
         </p>
         <p className="text-sm text-neutral-800 leading-relaxed">
           <strong className="text-black">Hygiene:</strong> Use separate keys per environment, rotate if exposed,

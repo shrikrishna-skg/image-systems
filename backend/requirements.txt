@@ -36,3 +36,4 @@ aiofiles>=24.0.0
 
 # Utilities
 python-dotenv>=1.0.0
+beautifulsoup4>=4.12.0

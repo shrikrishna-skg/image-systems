@@ -31,18 +31,18 @@ export const DOWNLOAD_FORMAT_OPTIONS: {
     hint: "No re-compression. Largest size. Only at full resolution.",
   },
   {
+    id: "png_lossless",
+    label: "PNG — lossless (default)",
+    hint: "Maximum fidelity at chosen size; default for new exports.",
+  },
+  {
     id: "webp_near_lossless",
-    label: "WebP — near-lossless (recommended)",
+    label: "WebP — near-lossless",
     hint: "Excellent detail, often much smaller than PNG.",
   },
   { id: "webp_balanced", label: "WebP — balanced", hint: "Smaller files; still strong for web and MLS." },
   { id: "jpeg_high", label: "JPEG — high quality", hint: "Great for photos; smaller than PNG." },
   { id: "jpeg_balanced", label: "JPEG — smaller", hint: "Lower MB; fine for previews and tight uploads." },
-  {
-    id: "png_lossless",
-    label: "PNG — lossless",
-    hint: "Maximum fidelity at chosen size; largest downloads.",
-  },
 ];
 
 export const DOWNLOAD_SIZE_OPTIONS: { id: DownloadMaxEdgeId; label: string; hint: string }[] = [
@@ -282,4 +282,39 @@ export function buildBulkSeriesStem(seriesPrefix: string, index1Based: number, p
 export function appendSizeToFilename(stem: string, maxEdge: DownloadMaxEdgeId, ext: string): string {
   if (maxEdge === "full") return `${stem}.${ext}`;
   return `${stem}_max${maxEdge}.${ext}`;
+}
+
+/** Safe basename for a .zip file (no extension). */
+export function sanitizeZipArchiveBasename(raw: string): string {
+  const s = sanitizeExportBasename(raw.replace(/\.zip$/i, ""));
+  return s || "bulk-export";
+}
+
+/**
+ * Ensure unique entry names inside a ZIP (same stem + size suffix can collide).
+ */
+export function makeUniqueZipEntryName(used: Set<string>, filename: string): string {
+  if (!used.has(filename)) {
+    used.add(filename);
+    return filename;
+  }
+  const dot = filename.lastIndexOf(".");
+  const base = dot > 0 ? filename.slice(0, dot) : filename;
+  const ext = dot > 0 ? filename.slice(dot) : "";
+  let n = 2;
+  let candidate = `${base}-${n}${ext}`;
+  while (used.has(candidate)) {
+    n += 1;
+    candidate = `${base}-${n}${ext}`;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+export function defaultBulkZipArchiveStem(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `bulk-export-${y}${m}${day}`;
 }

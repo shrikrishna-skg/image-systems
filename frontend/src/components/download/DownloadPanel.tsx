@@ -1,8 +1,8 @@
 import { Download, FileImage, Loader2, SlidersHorizontal, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ImageVersion } from "../../types";
 import client from "../../api/client";
-import { suggestFilename } from "../../api/images";
+import { suggestFilename, type SuggestFilenameResult } from "../../api/images";
 import { getLocalBlob } from "../../lib/localImageStore";
 import {
   DOWNLOAD_FORMAT_OPTIONS,
@@ -16,6 +16,7 @@ import {
   type DownloadMaxEdgeId,
   type ExportNamingPresetId,
 } from "../../lib/downloadExport";
+import { getLatestImageVersion } from "../../lib/imageVersions";
 import { isStorageOnlyMode } from "../../lib/storageOnlyMode";
 import { toast } from "sonner";
 import { toastProcessingError } from "../../lib/processingToast";
@@ -47,56 +48,71 @@ export default function DownloadPanel({
 }: Props) {
   const storageOnly = isStorageOnlyMode();
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
-  const [exportFormat, setExportFormat] = useState<DownloadFormatId>("webp_near_lossless");
+  const [exportFormat, setExportFormat] = useState<DownloadFormatId>("png_lossless");
   const [maxEdge, setMaxEdge] = useState<DownloadMaxEdgeId>("full");
   const [quickTarget, setQuickTarget] = useState<QuickTarget>("latest");
   const [namingPreset, setNamingPreset] = useState<ExportNamingPresetId>("pipeline");
   const [customBase, setCustomBase] = useState("");
-  const [aiBaseStem, setAiBaseStem] = useState<string | null>(null);
+  /** When non-empty, used as filename prefix (AI suggest fills this; you can edit). Overrides template/custom preset. */
+  const [exportBaseStem, setExportBaseStem] = useState("");
   const [aiProvider, setAiProvider] = useState<"openai" | "gemini">(
-    aiNamingProviders.includes("openai") ? "openai" : "gemini"
+    aiNamingProviders.includes("gemini") ? "gemini" : "openai"
   );
   const [aiLoading, setAiLoading] = useState(false);
+  const [lastSuggestMeta, setLastSuggestMeta] = useState<SuggestFilenameResult | null>(null);
 
-  const latestVersion = versions[versions.length - 1];
   const canAi = !storageOnly && aiNamingProviders.length > 0;
 
   useEffect(() => {
     if (maxEdge !== "full") {
-      setExportFormat((f) => (f === "as_stored" ? "webp_near_lossless" : f));
+      setExportFormat((f) => (f === "as_stored" ? "png_lossless" : f));
     }
   }, [maxEdge]);
 
   useEffect(() => {
     if (!aiNamingProviders.includes(aiProvider) && aiNamingProviders.length) {
-      setAiProvider(aiNamingProviders.includes("openai") ? "openai" : "gemini");
+      setAiProvider(aiNamingProviders.includes("gemini") ? "gemini" : "openai");
     }
   }, [aiNamingProviders, aiProvider]);
 
-  if (!versions?.length) return null;
+  const latestVersion = useMemo(() => {
+    if (!versions?.length) return null;
+    return getLatestImageVersion(versions) ?? null;
+  }, [versions]);
+
+  /** Fill export base from AI whenever the current asset’s latest result changes (no toast — avoids spam). */
+  useEffect(() => {
+    if (!canAi || !imageId || !latestVersion) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await suggestFilename(imageId, {
+          version: latestVersion.id,
+          provider: aiProvider,
+        });
+        if (!cancelled) {
+          setExportBaseStem(data.basename);
+          setLastSuggestMeta(data);
+        }
+      } catch {
+        /* templates still apply */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canAi, imageId, latestVersion?.id, aiProvider]);
+
+  if (!versions?.length || !latestVersion) return null;
 
   const rowKey = (suffix: string) => `${suffix}::${exportFormat}::${maxEdge}`;
 
-  const stemForRow = (
-    kind: "original" | "version",
-    v?: ImageVersion
-  ): string => {
-    if (aiBaseStem) {
-      return buildExportStem({
-        preset: namingPreset,
-        customBase,
-        aiBase: aiBaseStem,
-        originalFilename,
-        kind,
-        versionType: v?.version_type,
-        width: v?.width,
-        height: v?.height,
-      });
-    }
+  const stemForRow = (kind: "original" | "version", v?: ImageVersion): string => {
+    const aiBase = exportBaseStem.trim() || null;
     return buildExportStem({
       preset: namingPreset,
       customBase,
-      aiBase: null,
+      aiBase,
       originalFilename,
       kind,
       versionType: v?.version_type,
@@ -165,14 +181,20 @@ export default function DownloadPanel({
     if (!canAi || !latestVersion) return;
     setAiLoading(true);
     try {
-      const basename = await suggestFilename(imageId, {
+      const data = await suggestFilename(imageId, {
         version: latestVersion.id,
         provider: aiProvider,
       });
-      setAiBaseStem(basename);
-      toast.success("AI filename ready", {
-        description: `Base: ${basename} (suffix added per row).`,
-        duration: 4000,
+      setExportBaseStem(data.basename);
+      setLastSuggestMeta(data);
+      const costBit =
+        data.estimated_cost_usd != null
+          ? `~$${data.estimated_cost_usd.toFixed(6)} USD est.`
+          : "Cost estimate unavailable";
+      const modelBit = data.model ? ` · ${data.model}` : "";
+      toast.success("AI filename refreshed", {
+        description: `${costBit}${modelBit}. Edit the base below if you like.`,
+        duration: 5000,
       });
     } catch (err: unknown) {
       toastProcessingError(err, "AI suggest failed");
@@ -194,9 +216,9 @@ export default function DownloadPanel({
           <div>
             <p className="text-sm font-semibold text-black">Export quality & size</p>
             <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
-              Default <strong className="text-black">WebP near-lossless</strong> keeps excellent detail with much
-              smaller files than PNG. Use <strong className="text-black">as stored</strong> only for a byte-identical
-              copy at full resolution. Shorter long edge = lower MB.
+              Default <strong className="text-black">PNG lossless</strong> keeps maximum fidelity; WebP/JPEG are
+              available for smaller files. Use <strong className="text-black">as stored</strong> only for a
+              byte-identical copy at full resolution. Shorter long edge = lower MB.
             </p>
           </div>
         </div>
@@ -244,9 +266,10 @@ export default function DownloadPanel({
         <div className="mt-4 pt-4 border-t border-neutral-200/90 space-y-3">
           <p className="text-sm font-semibold text-black">File names</p>
           <p className="text-xs text-neutral-600 leading-relaxed">
-            Choose an <strong className="text-black">auto template</strong> or add an{" "}
-            <strong className="text-black">AI-suggested</strong> base; each row still gets a short suffix so
-            originals and versions do not overwrite each other.
+            With API keys configured, an <strong className="text-black">AI-suggested base</strong> fills in
+            automatically when the latest result updates; edit or clear anytime. Otherwise use an{" "}
+            <strong className="text-black">auto template</strong>. Each row still gets a suffix so files stay
+            unique.
           </p>
           <label className="block">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
@@ -254,10 +277,7 @@ export default function DownloadPanel({
             </span>
             <select
               value={namingPreset}
-              onChange={(e) => {
-                setNamingPreset(e.target.value as ExportNamingPresetId);
-                setAiBaseStem(null);
-              }}
+              onChange={(e) => setNamingPreset(e.target.value as ExportNamingPresetId)}
               className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-neutral-300"
             >
               {EXPORT_NAMING_PRESET_OPTIONS.map((o) => (
@@ -278,26 +298,40 @@ export default function DownloadPanel({
               <input
                 type="text"
                 value={customBase}
-                onChange={(e) => {
-                  setCustomBase(e.target.value);
-                  setAiBaseStem(null);
-                }}
+                onChange={(e) => setCustomBase(e.target.value)}
                 placeholder="e.g. oceanfront-suite"
                 className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-neutral-300 font-data"
               />
             </label>
           )}
-          {aiBaseStem && (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-700">
-              <span>
-                AI base: <span className="font-data font-medium text-black">{aiBaseStem}</span>
-              </span>
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+              Rename / export base (optional)
+            </span>
+            <input
+              type="text"
+              value={exportBaseStem}
+              onChange={(e) => setExportBaseStem(e.target.value)}
+              placeholder={
+                canAi
+                  ? "Type a base or use AI suggest — row suffix is added automatically"
+                  : "Type a custom base — row suffix is added automatically"
+              }
+              className="mt-1.5 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-black outline-none focus:ring-2 focus:ring-neutral-300 font-data"
+            />
+            <span className="mt-1 block text-[11px] text-neutral-500 leading-snug">
+              When filled, this prefix is used for every row below (each row still gets a unique suffix). Overrides the
+              auto template including &quot;Custom base&quot; when both are set.
+            </span>
+          </label>
+          {exportBaseStem.trim() && (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setAiBaseStem(null)}
-                className="text-black underline decoration-neutral-400 underline-offset-2 hover:decoration-black"
+                onClick={() => setExportBaseStem("")}
+                className="text-xs font-semibold text-black underline decoration-neutral-400 underline-offset-2 hover:decoration-black"
               >
-                Clear AI name
+                Clear export base
               </button>
             </div>
           )}
@@ -319,7 +353,7 @@ export default function DownloadPanel({
               <button
                 type="button"
                 onClick={() => void runAiSuggest()}
-                disabled={aiLoading}
+                disabled={aiLoading || !latestVersion}
                 className="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-black hover:bg-neutral-50 disabled:opacity-50"
               >
                 {aiLoading ? (
@@ -327,17 +361,59 @@ export default function DownloadPanel({
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                AI suggest name
+                Refresh AI name
               </button>
             </div>
-          ) : (
+          ) : null}
+          {canAi && lastSuggestMeta?.estimated_cost_usd != null ? (
+            <div className="rounded-lg border border-neutral-200/80 bg-neutral-50/90 px-3 py-2 space-y-1">
+              <p className="text-[11px] font-semibold text-black">
+                Estimated cost (this rename call)
+              </p>
+              <p className="text-xs font-data text-neutral-800">
+                ~${lastSuggestMeta.estimated_cost_usd.toFixed(6)} USD
+                {lastSuggestMeta.model ? (
+                  <span className="text-neutral-600"> · {lastSuggestMeta.model}</span>
+                ) : null}
+                {lastSuggestMeta.prompt_tokens != null && lastSuggestMeta.output_tokens != null ? (
+                  <span className="block text-[10px] font-normal text-neutral-500 mt-0.5">
+                    {lastSuggestMeta.prompt_tokens} in + {lastSuggestMeta.output_tokens} out tokens (when reported by the
+                    API)
+                  </span>
+                ) : null}
+              </p>
+              {lastSuggestMeta.cost_note ? (
+                <p className="text-[10px] text-neutral-600 leading-snug" title={lastSuggestMeta.cost_note}>
+                  {lastSuggestMeta.cost_note.length > 220
+                    ? `${lastSuggestMeta.cost_note.slice(0, 217)}…`
+                    : lastSuggestMeta.cost_note}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {!canAi ? (
             <p className="text-[11px] text-neutral-500 leading-relaxed">
-              AI rename needs the backend and a saved OpenAI or Gemini key in Settings. In local-only mode, use
-              templates above; pipeline default is{" "}
+              AI suggest needs the backend reachable and a saved OpenAI or Gemini key in Settings. You can still type a
+              base above. In local-only mode, pipeline default is{" "}
               <span className="font-data text-black">{defaultStemHint("version", latestVersion)}</span> for the latest
               result.
             </p>
-          )}
+          ) : null}
+          <div className="rounded-lg border border-dashed border-neutral-200 bg-white/80 px-3 py-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Live preview</p>
+            <dl className="mt-2 space-y-1.5 text-xs">
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                <dt className="shrink-0 text-neutral-500 w-28">Latest result</dt>
+                <dd className="font-data text-black break-all min-w-0">
+                  {stemForRow("version", latestVersion)}
+                </dd>
+              </div>
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                <dt className="shrink-0 text-neutral-500 w-28">Original row</dt>
+                <dd className="font-data text-black break-all min-w-0">{stemForRow("original")}</dd>
+              </div>
+            </dl>
+          </div>
         </div>
 
         <div className="mt-4 pt-4 border-t border-neutral-200/90">

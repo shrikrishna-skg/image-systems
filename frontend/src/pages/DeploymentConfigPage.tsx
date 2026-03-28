@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Sparkles, ClipboardCheck, ExternalLink } from "lucide-react";
+import { ClipboardCheck, ExternalLink } from "lucide-react";
+import { BrandWordmark } from "../components/brand/BrandWordmark";
+import { ImagesystemsLogo } from "../components/brand/ImagesystemsLogo";
 import { getApiBase } from "../lib/apiBase";
 
 const ENV_ROWS: { name: string; hint: string }[] = [
@@ -36,15 +38,10 @@ export default function DeploymentConfigPage() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center gap-3 mb-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black text-white ring-1 ring-black/10">
-              <Sparkles className="w-6 h-6" strokeWidth={2} />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-50 ring-1 ring-neutral-200">
+              <ImagesystemsLogo className="h-9 w-9" decorative />
             </div>
-            <div className="text-left">
-              <h1 className="text-2xl font-semibold tracking-tight text-black">ImageEnhance Pro</h1>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mt-0.5">
-                Deployment
-              </p>
-            </div>
+            <BrandWordmark variant="hero" titleAs="h1" />
           </div>
           <p className="text-neutral-600 text-sm leading-relaxed max-w-md mx-auto">
             This build is missing <strong className="text-neutral-900">Supabase</strong> environment

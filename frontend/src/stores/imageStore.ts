@@ -1,6 +1,65 @@
 import { create } from "zustand";
 import type { ImageInfo, JobInfo, CostEstimate } from "../types";
 import { MAX_WORKSPACE_ASSETS } from "../lib/workspaceLimits";
+import { GEMINI_IMAGE_MODELS, OPENAI_IMAGE_MODELS } from "../lib/providerIntegrationMeta";
+
+const ENHANCE_MODEL_PREFS_KEY = "iep-enhance-model-prefs-v1";
+
+const OPENAI_MODEL_SET = new Set<string>(OPENAI_IMAGE_MODELS);
+const GEMINI_MODEL_SET = new Set<string>(GEMINI_IMAGE_MODELS);
+
+function coerceOpenaiModel(saved: string | undefined): string {
+  if (saved && OPENAI_MODEL_SET.has(saved)) return saved;
+  return OPENAI_IMAGE_MODELS[0];
+}
+
+function coerceGeminiModel(saved: string | undefined): string {
+  if (saved && GEMINI_MODEL_SET.has(saved)) return saved;
+  return GEMINI_IMAGE_MODELS[0];
+}
+
+function loadEnhanceModelPrefs(): { openaiModelPref: string; geminiModelPref: string } {
+  try {
+    const raw = localStorage.getItem(ENHANCE_MODEL_PREFS_KEY);
+    if (!raw) {
+      return {
+        openaiModelPref: OPENAI_IMAGE_MODELS[0],
+        geminiModelPref: GEMINI_IMAGE_MODELS[0],
+      };
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed == null || typeof parsed !== "object") {
+      return {
+        openaiModelPref: OPENAI_IMAGE_MODELS[0],
+        geminiModelPref: GEMINI_IMAGE_MODELS[0],
+      };
+    }
+    const o = (parsed as { openai?: unknown; gemini?: unknown }).openai;
+    const g = (parsed as { openai?: unknown; gemini?: unknown }).gemini;
+    return {
+      openaiModelPref: coerceOpenaiModel(typeof o === "string" ? o : undefined),
+      geminiModelPref: coerceGeminiModel(typeof g === "string" ? g : undefined),
+    };
+  } catch {
+    return {
+      openaiModelPref: OPENAI_IMAGE_MODELS[0],
+      geminiModelPref: GEMINI_IMAGE_MODELS[0],
+    };
+  }
+}
+
+function persistEnhanceModelPrefs(openaiModelPref: string, geminiModelPref: string) {
+  try {
+    localStorage.setItem(
+      ENHANCE_MODEL_PREFS_KEY,
+      JSON.stringify({ openai: openaiModelPref, gemini: geminiModelPref })
+    );
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+const initialEnhancePrefs = loadEnhanceModelPrefs();
 
 export interface AddSessionImagesResult {
   added: number;
@@ -92,7 +151,7 @@ interface ImageState {
 
   /**
    * When false (default): one photo at a time, no batch queue UI.
-   * When true: multi-asset workspace (up to MAX_WORKSPACE_ASSETS), batch tools, archive strip.
+   * When true: multi-asset workspace (MAX_WORKSPACE_ASSETS cap), batch tools, archive strip.
    */
   workspaceMode: boolean;
   setWorkspaceMode: (enabled: boolean) => void;
@@ -102,6 +161,10 @@ interface ImageState {
   // Enhancement settings
   provider: string;
   model: string;
+  /** Last chosen OpenAI image model (persisted); used when switching back to OpenAI. */
+  openaiModelPref: string;
+  /** Last chosen Gemini image model (persisted); used when switching back to Gemini. */
+  geminiModelPref: string;
   lighting: string | null;
   qualityPreset: string | null;
   perspective: string | null;
@@ -295,6 +358,8 @@ export const useImageStore = create<ImageState>((set) => ({
 
   provider: "improve",
   model: "browser",
+  openaiModelPref: initialEnhancePrefs.openaiModelPref,
+  geminiModelPref: initialEnhancePrefs.geminiModelPref,
   lighting: "bright",
   qualityPreset: "full_enhance",
   perspective: "straighten",
@@ -306,12 +371,33 @@ export const useImageStore = create<ImageState>((set) => ({
   outputFormat: "png",
 
   setProvider: (provider) => {
-    let model = "gpt-image-1";
-    if (provider === "gemini") model = "gemini-2.0-flash-exp-image-generation";
-    if (provider === "improve") model = "browser";
-    set({ provider, model });
+    set((s) => {
+      if (provider === "improve") {
+        return { provider, model: "browser" };
+      }
+      if (provider === "openai") {
+        const model = coerceOpenaiModel(s.openaiModelPref);
+        return { provider, model, openaiModelPref: model };
+      }
+      if (provider === "gemini") {
+        const model = coerceGeminiModel(s.geminiModelPref);
+        return { provider, model, geminiModelPref: model };
+      }
+      return { provider, model: s.model };
+    });
   },
-  setModel: (model) => set({ model }),
+  setModel: (model) =>
+    set((s) => {
+      if (s.provider === "openai" && OPENAI_MODEL_SET.has(model)) {
+        persistEnhanceModelPrefs(model, s.geminiModelPref);
+        return { model, openaiModelPref: model };
+      }
+      if (s.provider === "gemini" && GEMINI_MODEL_SET.has(model)) {
+        persistEnhanceModelPrefs(s.openaiModelPref, model);
+        return { model, geminiModelPref: model };
+      }
+      return { model };
+    }),
   setLighting: (lighting) => set({ lighting }),
   setQualityPreset: (qualityPreset) => set({ qualityPreset }),
   setPerspective: (perspective) => set({ perspective }),
@@ -356,6 +442,8 @@ export const useImageStore = create<ImageState>((set) => ({
         workspaceMode: s.workspaceMode,
         provider: "improve",
         model: "browser",
+        openaiModelPref: s.openaiModelPref,
+        geminiModelPref: s.geminiModelPref,
         lighting: "bright",
         qualityPreset: "full_enhance",
         perspective: "straighten",

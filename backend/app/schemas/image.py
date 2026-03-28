@@ -72,6 +72,13 @@ class FullPipelineRequest(BaseModel):
         default=None,
         description="Roll in radians for auto perspective when using cloud enhance.",
     )
+    improve_input_version_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Required for OpenAI/Gemini full pipeline: id of an ImageVersion with provider=improve "
+            "(browser Improve output). Cloud models enhance this raster, not the raw upload."
+        ),
+    )
     # Upscale params
     scale_factor: int = 2
     target_resolution: Optional[str] = "4k"
@@ -110,8 +117,16 @@ class PresetsResponse(BaseModel):
 class SuggestFilenameRequest(BaseModel):
     """Which image bytes to analyze (original vs a version)."""
     version: Optional[str] = Field(None, description="Version ID; omit for original.")
-    provider: str = Field("openai", description="'openai' or 'gemini' — must match a saved API key.")
+    provider: str = Field(
+        "gemini",
+        description="'openai' or 'gemini' — must match a saved API key. Gemini 2.5 Flash-Lite is default for low-cost naming.",
+    )
 
 
 class SuggestFilenameResponse(BaseModel):
     basename: str
+    model: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    estimated_cost_usd: Optional[float] = None
+    cost_note: str = ""

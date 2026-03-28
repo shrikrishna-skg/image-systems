@@ -25,7 +25,7 @@ from sqlalchemy import text
 from app.database import engine, Base
 from app.services.auth_service import _jwt_secret_configured
 import app.models  # noqa: F401 — register all ORM tables on Base.metadata
-from app.routers import auth, api_keys, images, jobs, history
+from app.routers import auth, api_keys, images, jobs, history, scrape, image_generation
 
 
 @asynccontextmanager
@@ -50,11 +50,16 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_docs_public = settings.LOCAL_DEV_MODE or settings.APP_ENV != "production"
+
 app = FastAPI(
-    title="Image Enhance Pro",
-    description="AI-powered hotel & real estate image enhancement API",
+    title="Imagesystems",
+    description="Imagesystems — hotel & real estate image enhancement, generation, and batch pipelines",
     version="2.0.0",
     lifespan=lifespan,
+    docs_url="/docs" if _docs_public else None,
+    redoc_url="/redoc" if _docs_public else None,
+    openapi_url="/openapi.json" if _docs_public else None,
 )
 
 
@@ -94,12 +99,25 @@ if _rx:
     _cors_kw["allow_origin_regex"] = _rx
 app.add_middleware(CORSMiddleware, **_cors_kw)
 
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Baseline headers for API responses (keys and tokens travel only over TLS + app logic)."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    return response
+
+
 # Routers
 app.include_router(auth.router)
 app.include_router(api_keys.router)
 app.include_router(images.router)
 app.include_router(jobs.router)
 app.include_router(history.router)
+app.include_router(scrape.router)
+app.include_router(image_generation.router)
 
 # Serve uploaded files (development only)
 if settings.APP_ENV == "development":

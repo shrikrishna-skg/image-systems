@@ -46,8 +46,8 @@ class Settings(BaseSettings):
     )
     # Larger chunks = fewer async read/write syscalls (faster uploads on SSD).
     UPLOAD_READ_CHUNK_BYTES: int = 8 * 1024 * 1024
-    # Align with frontend workspace batch cap (bulk import + fair API limits).
-    MAX_FILES_PER_UPLOAD_BATCH: int = 25
+    # Multipart upload batch size (per request). Frontend chunks to this; raise for large workspace imports.
+    MAX_FILES_PER_UPLOAD_BATCH: int = 200
 
     # Privacy: when false, image bytes are removed from disk after each job (grace period for download).
     # Database keeps only metadata (no pixels in DB). Users should download results during the grace window.
@@ -64,6 +64,16 @@ class Settings(BaseSettings):
         "http://localhost:3020,http://127.0.0.1:3020,"
         "http://localhost:4173,http://127.0.0.1:4173"
     )
+
+    # URL → image discovery (/api/scrape): Zyte (browser HTML) when configured, else direct HTTP.
+    # One Zyte POST per POST /api/scrape/page; import-urls only downloads picked images (no Zyte).
+    ZYTE_API_KEY: str = ""
+    ZYTE_EXTRACT_URL: str = "https://api.zyte.com/v1/extract"
+    # Max unique image URLs returned from a single HTML document (Zyte or direct).
+    SCRAPE_MAX_IMAGE_URLS: int = 50_000
+
+    # /images/.../suggest-filename — budget multimodal model (text + image). Override if Google renames models.
+    GEMINI_FILENAME_SUGGEST_MODEL: str = "gemini-2.5-flash-lite"
 
     @staticmethod
     def _database_host(url: str) -> str:

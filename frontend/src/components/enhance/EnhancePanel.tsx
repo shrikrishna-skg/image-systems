@@ -1,5 +1,5 @@
 import { useImageStore } from "../../stores/imageStore";
-import { PROVIDERS_ENHANCE } from "../../lib/providerIntegrationMeta";
+import { ENHANCE_IMAGE_MODEL_LABELS, PROVIDERS_ENHANCE } from "../../lib/providerIntegrationMeta";
 import { Sun, Sparkles, Move, MessageSquare } from "lucide-react";
 
 const LIGHTING_OPTIONS = [
@@ -67,6 +67,13 @@ export default function EnhancePanel() {
             a clarity pass). Upscale uses canvas resize with a light detail hint (not Real-ESRGAN).
           </p>
         )}
+        {(store.provider === "openai" || store.provider === "gemini") && (
+          <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+            <strong className="text-gray-700">Improve always runs first</strong> in your browser with the
+            settings below, then the cloud model refines that image. The raw upload is not sent directly to
+            the API.
+          </p>
+        )}
       </div>
 
       {/* Model */}
@@ -80,10 +87,23 @@ export default function EnhancePanel() {
           >
             {currentProvider?.models.map((m) => (
               <option key={m} value={m}>
-                {m}
+                {ENHANCE_IMAGE_MODEL_LABELS[m] ?? m}
               </option>
             ))}
           </select>
+          {store.provider === "openai" && (
+            <p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
+              Uses OpenAI&apos;s <strong className="text-gray-700">GPT Image</strong> models (
+              <code className="text-[10px]">images.edit</code>
+              ), not chat models like <code className="text-[10px]">gpt-4o</code>.{" "}
+              <strong className="text-gray-700">Mini</strong> is the budget tier.
+            </p>
+          )}
+          {store.provider === "gemini" && (
+            <p className="mt-1.5 text-[11px] text-gray-500 leading-relaxed">
+              Strongest option first; the 2.0 experimental image model is typically the lower-cost choice.
+            </p>
+          )}
         </div>
       )}
 

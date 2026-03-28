@@ -38,7 +38,7 @@ export default function WorkspaceBulkImportStrip({ disabled }: Props) {
 
   if (isFull) {
     return (
-      <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3">
+      <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 px-3 py-2.5">
         <WorkspaceCapacityMeter used={sessionCount} />
       </div>
     );
@@ -47,32 +47,32 @@ export default function WorkspaceBulkImportStrip({ disabled }: Props) {
   return (
     <div
       {...getRootProps()}
-      className={`rounded-2xl border border-dashed px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer transition-colors ${
+      className={`rounded-xl border border-dashed px-3 py-2.5 flex flex-row flex-wrap items-center gap-2.5 sm:gap-3 cursor-pointer transition-colors ${
         isDragActive
           ? "border-black bg-neutral-100"
           : "border-neutral-300 bg-white hover:border-neutral-400 hover:bg-neutral-50/80"
       } ${disabled || uploading ? "opacity-50 pointer-events-none cursor-not-allowed" : ""}`}
     >
       <input {...getInputProps({ accept: "image/*,.svg,.heic,.heif,.avif,.jxl" })} />
-      <div className="flex items-start gap-3 flex-1 min-w-0">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-neutral-50 text-black">
-          {uploading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <FolderPlus className="h-5 w-5" strokeWidth={2} />
-          )}
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-black">
-            {isDragActive ? "Drop to add to this batch" : "Add more listing photos"}
-          </p>
-          <p className="text-xs text-neutral-600 mt-0.5 leading-relaxed">
-            Multi-file drop OK — up to <strong className="text-black font-semibold">{slots}</strong> will fit (
-            {sessionCount} already in workspace).
-          </p>
-        </div>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-black">
+        {uploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <FolderPlus className="h-4 w-4" strokeWidth={2} />
+        )}
+      </span>
+      <div className="min-w-0 flex-1 basis-[min(100%,12rem)]">
+        <p className="text-[13px] font-semibold text-black leading-snug">
+          {isDragActive ? "Drop to add to batch" : "Add more photos"}
+        </p>
+        <p className="text-[11px] text-neutral-600 mt-0.5 leading-snug">
+          Multi-drop · up to <strong className="text-black font-semibold">{slots}</strong> slots · {sessionCount} in
+          workspace
+        </p>
       </div>
-      <WorkspaceCapacityMeter used={sessionCount} />
+      <div className="shrink-0 ml-auto sm:ml-0">
+        <WorkspaceCapacityMeter used={sessionCount} />
+      </div>
     </div>
   );
 }

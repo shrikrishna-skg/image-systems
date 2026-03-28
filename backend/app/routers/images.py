@@ -21,12 +21,12 @@ from app.schemas.image import (
 from app.schemas.job import JobResponse
 from app.services.auth_service import get_current_user
 from app.services.storage_service import storage_service
+from app.config import settings
 from app.services.filename_suggest_service import suggest_filename_openai, suggest_filename_gemini
 from app.services.encryption_service import encryption_service
 from app.utils.image_utils import get_mime_type, probe_stored_image
 from app.utils.prompt_templates import build_enhancement_prompt, get_available_presets
 from app.services.perspective_plate import should_apply_perspective_plate
-from app.config import settings
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 log = logging.getLogger(__name__)
@@ -339,7 +339,33 @@ async def process_full_pipeline(
     if not skip_replicate and not replicate_key:
         raise HTTPException(status_code=400, detail="No Replicate API key configured.")
 
+    if req.provider in ("openai", "gemini"):
+        if not req.improve_input_version_id:
+            raise HTTPException(
+                status_code=400,
+                detail="improve_input_version_id is required: the app runs browser Improve first, then sends that version to the cloud model.",
+            )
+        vres = await db.execute(
+            select(ImageVersion).where(
+                ImageVersion.id == req.improve_input_version_id,
+                ImageVersion.image_id == image_id,
+            )
+        )
+        imp_ver = vres.scalar_one_or_none()
+        if not imp_ver:
+            raise HTTPException(status_code=400, detail="improve_input_version_id not found for this image.")
+        if (imp_ver.provider or "").lower() != "improve":
+            raise HTTPException(
+                status_code=400,
+                detail="improve_input_version_id must be a browser Improve version (local engine).",
+            )
+        if not (imp_ver.storage_path or "").strip():
+            raise HTTPException(status_code=400, detail="Improve version has no file on disk.")
+
     use_plate = should_apply_perspective_plate(req.perspective, req.auto_rotation_rad)
+    if req.provider in ("openai", "gemini") and req.improve_input_version_id:
+        # Perspective is already baked into the Improve raster; skip corner-outpaint prompt + plate.
+        use_plate = False
     prompt = build_enhancement_prompt(
         lighting=req.lighting,
         quality=req.quality_preset,
@@ -371,6 +397,7 @@ async def process_full_pipeline(
             "replicate_api_key_id": replicate_key.id if replicate_key else None,
             "perspective_plate": use_plate,
             "auto_rotation_rad": req.auto_rotation_rad,
+            "improve_input_version_id": req.improve_input_version_id,
         },
     )
     db.add(job)
@@ -536,11 +563,12 @@ async def suggest_export_filename(
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
 
+    ver_row: Optional[ImageVersion] = None
     if req.version:
-        ver = next((v for v in image.versions if v.id == req.version), None)
-        if not ver:
+        ver_row = next((v for v in image.versions if v.id == req.version), None)
+        if not ver_row:
             raise HTTPException(status_code=404, detail="Version not found")
-        file_path = (ver.storage_path or "").strip()
+        file_path = (ver_row.storage_path or "").strip()
     else:
         file_path = (image.storage_path or "").strip()
 
@@ -553,7 +581,7 @@ async def suggest_export_filename(
     if not storage_service.file_exists(file_path):
         raise HTTPException(status_code=404, detail="File not found on disk")
 
-    provider = (req.provider or "openai").lower()
+    provider = (req.provider or "gemini").lower()
     if provider not in ("openai", "gemini"):
         raise HTTPException(status_code=400, detail="provider must be 'openai' or 'gemini'")
 
@@ -568,16 +596,56 @@ async def suggest_export_filename(
         )
     api_key = encryption_service.decrypt(row.encrypted_key)
 
+    ctx = {
+        "original_filename": image.original_filename or "",
+        "mime_type": image.mime_type,
+    }
+    if ver_row:
+        ctx.update(
+            {
+                "subject": "processed_pipeline_output",
+                "version_type": ver_row.version_type,
+                "width": ver_row.width or image.width,
+                "height": ver_row.height or image.height,
+                "file_size_bytes": ver_row.file_size_bytes if ver_row.file_size_bytes is not None else image.file_size_bytes,
+                "enhancement_provider": ver_row.provider,
+                "enhancement_model": ver_row.model,
+                "scale_factor": ver_row.scale_factor,
+            }
+        )
+    else:
+        ctx.update(
+            {
+                "subject": "original_upload",
+                "width": image.width,
+                "height": image.height,
+                "file_size_bytes": image.file_size_bytes,
+            }
+        )
+
     try:
         if provider == "openai":
-            stem = await asyncio.to_thread(suggest_filename_openai, api_key, file_path)
+            out = await asyncio.to_thread(suggest_filename_openai, api_key, file_path, ctx)
         else:
-            stem = await asyncio.to_thread(suggest_filename_gemini, api_key, file_path)
+            out = await asyncio.to_thread(
+                suggest_filename_gemini,
+                api_key,
+                file_path,
+                ctx,
+                settings.GEMINI_FILENAME_SUGGEST_MODEL,
+            )
     except Exception as e:
         log.exception("suggest-filename failed")
         raise HTTPException(status_code=502, detail=f"Model error: {e!s}") from e
 
-    return SuggestFilenameResponse(basename=stem)
+    return SuggestFilenameResponse(
+        basename=out.basename,
+        model=out.model,
+        prompt_tokens=out.prompt_tokens,
+        output_tokens=out.output_tokens,
+        estimated_cost_usd=out.estimated_cost_usd,
+        cost_note=out.cost_note or "",
+    )
 
 
 @router.get("", response_model=List[ImageDetailResponse])

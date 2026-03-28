@@ -88,13 +88,15 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl mx-auto pb-16">
-      <header className="mb-10">
+    <div className="min-w-0 max-w-6xl mx-auto px-3 py-4 sm:px-6 sm:py-6 md:p-8 pb-16">
+      <header className="mb-6 sm:mb-10">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-black mb-2">
           Library
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Past runs &amp; exports</h1>
-        <p className="mt-3 text-slate-600 max-w-2xl leading-relaxed">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 text-balance">
+          Past runs &amp; exports
+        </h1>
+        <p className="mt-2 sm:mt-3 text-sm sm:text-base text-slate-600 max-w-2xl leading-relaxed">
           {storageOnly
             ? "Everything here lives in IndexedDB on this device—reopen a shot to keep editing, or download the latest version for mockups."
             : "Reopen any listing image to iterate on enhancement and upscale, or download versions you already shipped to OTAs or MLS."}

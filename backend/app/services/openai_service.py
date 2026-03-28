@@ -104,5 +104,49 @@ class OpenAIImageService:
 
         return _decode_first_image(result)
 
+    def generate_image(
+        self,
+        api_key: str,
+        prompt: str,
+        model: str = "gpt-image-1",
+        quality: str = "high",
+        output_format: str = "png",
+    ) -> bytes:
+        """
+        Text-to-image via OpenAI images.generate (no source image).
+        """
+        client = OpenAI(api_key=api_key, timeout=_OPENAI_TIMEOUT)
+        out_fmt = _norm_output_format(output_format)
+        q = (quality or "high").lower()
+        if q not in ("low", "medium", "high"):
+            q = "high"
+
+        logger.info(
+            "Calling OpenAI images.generate: model=%s quality=%s size=1536x1024 output=%s",
+            model,
+            q,
+            out_fmt,
+        )
+
+        result = client.images.generate(
+            model=model,
+            prompt=prompt.strip()[:4000],
+            n=1,
+            size="1536x1024",
+            quality=q,
+            output_format=out_fmt,  # type: ignore[arg-type]
+        )
+
+        if not result.data:
+            raise ValueError("OpenAI returned no image entries")
+        image_data = result.data[0]
+        if getattr(image_data, "b64_json", None):
+            return base64.b64decode(image_data.b64_json)
+        if getattr(image_data, "url", None):
+            resp = httpx.get(image_data.url, timeout=_OPENAI_TIMEOUT)
+            resp.raise_for_status()
+            return resp.content
+        raise ValueError("OpenAI returned neither b64_json nor url for the image")
+
 
 openai_image_service = OpenAIImageService()

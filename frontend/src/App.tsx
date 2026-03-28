@@ -24,6 +24,8 @@ const storageOnlyApp = isStorageOnlyMode();
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+const ImportFromUrlPage = lazy(() => import("./pages/ImportFromUrlPage"));
+const ImageGenerationPage = lazy(() => import("./pages/ImageGenerationPage"));
 
 function RouteFallback() {
   return (
@@ -109,7 +111,7 @@ function App() {
       {!storageOnlyApp && isPlaceholderApiBaseUrl() && (
         <div
           role="alert"
-          className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm text-amber-950"
+          className="border-b border-amber-300 bg-amber-50 px-3 py-2 text-center text-xs sm:text-sm text-amber-950 sm:px-4"
         >
           <strong className="font-semibold">API URL not configured.</strong>{" "}
           <span className="text-amber-900">
@@ -124,8 +126,8 @@ function App() {
         position="bottom-right"
         theme="light"
         closeButton
-        offset={24}
-        gap={14}
+        offset={20}
+        gap={12}
         visibleToasts={4}
         toastOptions={{
           duration: 5000,
@@ -199,6 +201,22 @@ function App() {
             element={
               <Suspense fallback={<RouteFallback />}>
                 <HistoryPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="import-url"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <ImportFromUrlPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="image-generation"
+            element={
+              <Suspense fallback={<RouteFallback />}>
+                <ImageGenerationPage />
               </Suspense>
             }
           />

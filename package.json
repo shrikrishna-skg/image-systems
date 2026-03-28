@@ -1,5 +1,5 @@
 {
-  "name": "multisystems-img-generator",
+  "name": "imagesystems",
   "private": true,
   "engines": {
     "node": ">=20.19.0"
@@ -20,9 +20,14 @@
     "build": "npm run build -w frontend",
     "lint": "npm run lint -w frontend",
     "preview": "npm run preview -w frontend",
-    "install-frontend": "npm install"
+    "install-frontend": "npm install",
+    "electron:dev": "cross-env ELECTRON_DEV=1 electron electron/main.cjs",
+    "electron:dev:wait": "cross-env ELECTRON_DEV=1 wait-on http://127.0.0.1:2020 && electron electron/main.cjs"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^33.4.0",
+    "wait-on": "^8.0.1"
   }
 }

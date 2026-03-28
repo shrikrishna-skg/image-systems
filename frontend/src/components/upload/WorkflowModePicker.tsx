@@ -88,7 +88,7 @@ export default function WorkflowModePicker({ variant = "cards" }: Props) {
           <div className="min-w-0">
             <p className="text-sm font-semibold text-black">Workspace batch</p>
             <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
-              Queue up to 25 assets, bulk import, batch run, and session tools.
+              Queue many images, bulk import, batch run, and session tools.
             </p>
           </div>
         </div>

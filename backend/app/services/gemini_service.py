@@ -38,7 +38,7 @@ class GeminiImageService:
                 types.Content(
                     parts=[
                         image_part,
-                        types.Part.from_text(prompt),
+                        types.Part.from_text(text=prompt),
                     ]
                 )
             ],
@@ -54,6 +54,35 @@ class GeminiImageService:
                     return part.inline_data.data
 
         raise ValueError("No enhanced image in Gemini response")
+
+    def generate_image_from_text(
+        self,
+        api_key: str,
+        prompt: str,
+        model: str = "gemini-2.5-flash-image",
+    ) -> bytes:
+        """
+        Text-to-image: no input image. Uses Gemini image-capable model.
+        """
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model=model,
+            contents=[
+                types.Content(
+                    parts=[types.Part.from_text(text=prompt.strip()[:8000])],
+                )
+            ],
+            config=types.GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"],
+            ),
+        )
+
+        if response.candidates:
+            for part in response.candidates[0].content.parts:
+                if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                    return part.inline_data.data
+
+        raise ValueError("No image in Gemini text-to-image response")
 
 
 gemini_image_service = GeminiImageService()

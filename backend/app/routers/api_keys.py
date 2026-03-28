@@ -1,5 +1,7 @@
+import base64
+import json
 import logging
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +15,7 @@ from app.schemas.api_key import (
     ApiKeyValidateRequest,
     ApiKeyValidateSavedRequest,
 )
+from app.config import settings
 from app.services.auth_service import get_current_user
 from app.services.encryption_service import encryption_service
 import httpx
@@ -30,7 +33,7 @@ async def list_keys(
     result = await db.execute(
         select(ApiKey).where(ApiKey.user_id == user.id)
     )
-    keys = result.scalars().all()
+    keys = [k for k in result.scalars().all() if k.provider != "firecrawl"]
 
     results = []
     for k in keys:
@@ -54,6 +57,25 @@ async def list_keys(
     return results
 
 
+def _gemini_error_detail(resp: httpx.Response) -> Optional[str]:
+    """Extract a short message from Google Generative Language API error JSON."""
+    try:
+        data: Any = resp.json()
+    except (json.JSONDecodeError, ValueError):
+        t = (resp.text or "").strip()
+        return t[:240] if t else None
+    err = data.get("error") if isinstance(data, dict) else None
+    if not isinstance(err, dict):
+        return None
+    msg = err.get("message")
+    status = err.get("status")
+    parts = [p for p in (msg, status) if isinstance(p, str) and p.strip()]
+    if not parts:
+        return None
+    out = " — ".join(parts)[:400]
+    return out
+
+
 def _soft_validate_key_format(provider: str, api_key: str) -> None:
     """Reject obviously wrong shapes before any network call."""
     if len(api_key) < 8:
@@ -68,6 +90,11 @@ def _soft_validate_key_format(provider: str, api_key: str) -> None:
         raise HTTPException(
             status_code=400,
             detail="Replicate API tokens usually start with r8_. Copy the token from Replicate → Account → API tokens.",
+        )
+    if provider == "zyte" and len(api_key) < 16:
+        raise HTTPException(
+            status_code=400,
+            detail="Zyte API key looks too short. Copy it from https://app.zyte.com/ → Zyte API → API access.",
         )
 
 
@@ -96,6 +123,7 @@ async def _probe_provider_api_key(
 
     if provider == "gemini":
         # Prefer header over query string (avoids keys in access logs).
+        # Lists models — same key used by google-genai / AI Studio.
         async with httpx.AsyncClient() as client:
             try:
                 resp = await client.get(
@@ -109,7 +137,10 @@ async def _probe_provider_api_key(
                 return False, str(e) or "Network error", None
             if resp.status_code == 200:
                 return True, None, 200
-            return False, f"HTTP {resp.status_code}", resp.status_code
+            detail = _gemini_error_detail(resp)
+            if detail:
+                return False, f"HTTP {resp.status_code}: {detail}", resp.status_code
+            return False, f"HTTP {resp.status_code} (enable Generative Language API for this key in Google Cloud)", resp.status_code
 
     if provider == "replicate":
         async with httpx.AsyncClient() as client:
@@ -127,6 +158,39 @@ async def _probe_provider_api_key(
                 return True, None, 200
             return False, f"HTTP {resp.status_code}", resp.status_code
 
+    if provider == "zyte":
+        auth = base64.b64encode(f"{api_key}:".encode()).decode()
+        headers = {
+            "Authorization": f"Basic {auth}",
+            "Content-Type": "application/json",
+        }
+        # Cheap HTTP fetch (not headless) to validate credentials — see Zyte extract reference.
+        payload = {"url": "https://example.com", "httpResponseBody": True}
+        extract_url = (settings.ZYTE_EXTRACT_URL or "https://api.zyte.com/v1/extract").strip()
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(extract_url, json=payload, headers=headers, timeout=35.0)
+            except httpx.TimeoutException:
+                return False, "Connection timeout", None
+            except httpx.RequestError as e:
+                return False, str(e) or "Network error", None
+        if resp.status_code in (401, 403):
+            return False, f"HTTP {resp.status_code}", resp.status_code
+        if resp.status_code == 429:
+            return False, "Rate limit exceeded", 429
+        if resp.status_code >= 500:
+            return False, f"HTTP {resp.status_code}", resp.status_code
+        if resp.status_code != 200:
+            return False, f"HTTP {resp.status_code}", resp.status_code
+        try:
+            data = resp.json()
+        except Exception:
+            return False, "Invalid JSON from Zyte", resp.status_code
+        if data.get("httpResponseBody"):
+            return True, None, 200
+        detail = data.get("detail") or data.get("title") or "Unexpected Zyte response"
+        return False, str(detail), resp.status_code
+
     raise HTTPException(status_code=400, detail="Unknown provider")
 
 
@@ -140,8 +204,11 @@ async def create_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if req.provider not in ("openai", "gemini", "replicate"):
-        raise HTTPException(status_code=400, detail="Provider must be openai, gemini, or replicate")
+    if req.provider not in ("openai", "gemini", "replicate", "zyte"):
+        raise HTTPException(
+            status_code=400,
+            detail="Provider must be openai, gemini, replicate, or zyte",
+        )
 
     api_key = (req.api_key or "").strip()
     if not api_key:

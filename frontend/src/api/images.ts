@@ -93,15 +93,24 @@ export const getPresets = async () => {
   return res.data;
 };
 
+export interface SuggestFilenameResult {
+  basename: string;
+  model?: string | null;
+  prompt_tokens?: number | null;
+  output_tokens?: number | null;
+  estimated_cost_usd?: number | null;
+  cost_note?: string | null;
+}
+
 export async function suggestFilename(
   imageId: string,
   params: { version?: string | null; provider?: string }
-) {
-  const res = await client.post<{ basename: string }>(`/images/${imageId}/suggest-filename`, {
+): Promise<SuggestFilenameResult> {
+  const res = await client.post<SuggestFilenameResult>(`/images/${imageId}/suggest-filename`, {
     version: params.version ?? null,
-    provider: params.provider ?? "openai",
+    provider: params.provider ?? "gemini",
   });
-  return res.data.basename;
+  return res.data;
 }
 
 export const getDownloadUrl = (imageId: string, versionId?: string) => {

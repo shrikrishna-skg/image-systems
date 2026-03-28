@@ -9,6 +9,34 @@ const verboseApiLogs =
   import.meta.env.DEV &&
   (import.meta.env.VITE_VERBOSE_API_LOGS === "true" || import.meta.env.VITE_VERBOSE_API_LOGS === true);
 
+const SENSITIVE_LOG_KEYS = new Set([
+  "api_key",
+  "password",
+  "access_token",
+  "refresh_token",
+  "token",
+  "secret",
+  "authorization",
+]);
+
+/** Strip secrets from dev console logging (never log provider keys or auth material). */
+function redactForVerboseLog(data: unknown): unknown {
+  if (data == null) return data;
+  if (typeof data !== "object") return data;
+  if (data instanceof FormData) return "[FormData]";
+  if (Array.isArray(data)) return data.map(redactForVerboseLog);
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+    const low = k.toLowerCase();
+    if (SENSITIVE_LOG_KEYS.has(low) || low.includes("secret") || low.includes("password")) {
+      out[k] = "[REDACTED]";
+    } else {
+      out[k] = redactForVerboseLog(v);
+    }
+  }
+  return out;
+}
+
 /** Prefer relative `/api` in dev so Vite proxies to the backend (any dev port, no CORS). */
 const API_BASE_URL =
   (typeof import.meta.env.VITE_API_BASE_URL === "string"
@@ -40,7 +68,10 @@ client.interceptors.request.use(
         const n = config.data.getAll("files").length;
         console.log(`[API] → ${(config.method ?? "GET").toUpperCase()} ${url} (multipart, ${n} file(s))`);
       } else {
-        console.log(`[API] → ${(config.method ?? "GET").toUpperCase()} ${url}`, config.data ?? "");
+        console.log(
+          `[API] → ${(config.method ?? "GET").toUpperCase()} ${url}`,
+          redactForVerboseLog(config.data) ?? ""
+        );
       }
     }
     if (typeof FormData !== "undefined" && config.data instanceof FormData) {
