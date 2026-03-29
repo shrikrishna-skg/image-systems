@@ -1,0 +1,18 @@
+{
+  "name": "ImageSystems · Multisystems",
+  "short_name": "ImageSystems",
+  "description": "Batch image pipelines for hotel and real estate listings.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "theme_color": "#ffffff",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/"
+}

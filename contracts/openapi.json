@@ -1,0 +1,3607 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Imagesystems",
+    "description": "Imagesystems \u2014 hotel & real estate image enhancement, generation, and batch pipelines",
+    "version": "2.0.0"
+  },
+  "paths": {
+    "/api/auth/local/session": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create Local Dev Session",
+        "description": "Issue a dev JWT when LOCAL_DEV_MODE=true (no Supabase). Validates optional env gate.",
+        "operationId": "create_local_dev_session_api_auth_local_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalDevLoginBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Me",
+        "description": "Get current user profile. Auth is handled by Supabase on the frontend.",
+        "operationId": "get_me_api_auth_me_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Update Profile",
+        "description": "Update user profile.",
+        "operationId": "update_profile_api_auth_me_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "full_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "Full Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/keys": {
+      "get": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "List Keys",
+        "operationId": "list_keys_api_keys_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Keys Api Keys Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "Create Key",
+        "operationId": "create_key_api_keys_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/keys/{key_id}": {
+      "delete": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "Delete Key",
+        "operationId": "delete_key_api_keys__key_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/keys/validate": {
+      "post": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "Validate Key",
+        "description": "Test if an API key works against the provider (does not persist).",
+        "operationId": "validate_key_api_keys_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/keys/validate-saved": {
+      "post": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "Validate Saved Key",
+        "description": "Test the stored (encrypted) key and update is_valid on the row.",
+        "operationId": "validate_saved_key_api_keys_validate_saved_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyValidateSavedRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/images/presets": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Get Presets",
+        "description": "Get available enhancement presets.",
+        "operationId": "get_presets_api_images_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/upload": {
+      "post": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Upload Images",
+        "operationId": "upload_images_api_images_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_images_api_images_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImageUploadResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Upload Images Api Images Upload Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/images/{image_id}/enhance": {
+      "post": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Enhance Image",
+        "description": "Start an AI enhancement job.",
+        "operationId": "enhance_image_api_images__image_id__enhance_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnhancementRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/{image_id}/upscale": {
+      "post": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Upscale Image",
+        "description": "Start an upscaling job.",
+        "operationId": "upscale_image_api_images__image_id__upscale_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpscaleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/{image_id}/process": {
+      "post": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Process Full Pipeline",
+        "description": "Start full pipeline: enhance + upscale.",
+        "operationId": "process_full_pipeline_api_images__image_id__process_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FullPipelineRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/{image_id}/local-improve": {
+      "post": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Upload Local Improve Version",
+        "description": "Persist a browser-processed result (Improve engine) as a new final version \u2014 no external API keys.",
+        "operationId": "upload_local_improve_version_api_images__image_id__local_improve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_local_improve_version_api_images__image_id__local_improve_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/{image_id}": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Get Image",
+        "operationId": "get_image_api_images__image_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Delete Image",
+        "operationId": "delete_image_api_images__image_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/{image_id}/download": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Download Image",
+        "operationId": "download_image_api_images__image_id__download_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version ID to download. If empty, downloads original.",
+              "title": "Version"
+            },
+            "description": "Version ID to download. If empty, downloads original."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/{image_id}/suggest-filename": {
+      "post": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Suggest Export Filename",
+        "description": "Vision model suggests a short kebab-case filename stem (requires OpenAI or Gemini API key).",
+        "operationId": "suggest_export_filename_api_images__image_id__suggest_filename_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Image Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestFilenameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestFilenameResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "List Images",
+        "operationId": "list_images_api_images_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImageDetailResponse"
+                  },
+                  "title": "Response List Images Api Images Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/images/estimate-cost": {
+      "post": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Estimate Cost",
+        "description": "Estimate processing cost before starting.",
+        "operationId": "estimate_cost_api_images_estimate_cost_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FullPipelineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostEstimateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_api_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "operationId": "list_jobs_api_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobResponse"
+                  },
+                  "title": "Response List Jobs Api Jobs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Get History",
+        "description": "Get processing history for the current user.",
+        "operationId": "get_history_api_history_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by action type",
+              "title": "Action"
+            },
+            "description": "Filter by action type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryEntry"
+                  },
+                  "title": "Response Get History Api History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history/usage": {
+      "get": {
+        "tags": [
+          "history"
+        ],
+        "summary": "Get Usage Summary",
+        "description": "Get usage summary and daily stats.",
+        "operationId": "get_usage_summary_api_history_usage_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Number of days to include",
+              "default": 30,
+              "title": "Days"
+            },
+            "description": "Number of days to include"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scrape/embed-check": {
+      "post": {
+        "tags": [
+          "scrape"
+        ],
+        "summary": "Embed Check",
+        "description": "Check whether a URL can be displayed in an iframe from this app (X-Frame-Options / CSP). Many sites\n(e.g. Expedia) forbid embedding \u2014 the panel would stay blank without this check.",
+        "operationId": "embed_check_api_scrape_embed_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmbedCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbedCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/scrape/page": {
+      "post": {
+        "tags": [
+          "scrape"
+        ],
+        "summary": "Scrape Page",
+        "description": "Fetch a page once (Zyte or direct HTTP) and list image URLs from that HTML.\nNo additional Zyte calls for /scrape/import-urls \u2014 only this endpoint runs browser extract.",
+        "operationId": "scrape_page_api_scrape_page_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScrapePageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScrapePageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/scrape/import-urls": {
+      "post": {
+        "tags": [
+          "scrape"
+        ],
+        "summary": "Import Urls As Images",
+        "description": "Download image URLs (each re-validated for SSRF) and register as Image rows \u2014 same as multipart upload.\nDoes not call Zyte; only HTTP GETs the selected asset URLs (your CDN / origin bandwidth).",
+        "operationId": "import_urls_as_images_api_scrape_import_urls_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportUrlsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImageUploadResponse"
+                  },
+                  "type": "array",
+                  "title": "Response Import Urls As Images Api Scrape Import Urls Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/image-generation/compose": {
+      "post": {
+        "tags": [
+          "image-generation"
+        ],
+        "summary": "Compose Prompt",
+        "description": "Phase 1a \u2014 Software intelligence: turn a vague request into a concrete image prompt.\nDoes not call the image API or consume image-generation quota.",
+        "operationId": "compose_prompt_api_image_generation_compose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationComposeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageGenerationComposeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/image-generation/generate": {
+      "post": {
+        "tags": [
+          "image-generation"
+        ],
+        "summary": "Generate Image",
+        "description": "Interpret (optional) \u2192 image model \u2192 persist as a new Image (original), same as an upload for Operations.",
+        "operationId": "generate_image_api_image_generation_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageGenerationGenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageGenerationGenerateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/knowledge/scenarios/filters": {
+      "get": {
+        "tags": [
+          "knowledge"
+        ],
+        "summary": "List Scenario Filters",
+        "description": "Facet values present in the catalog plus the full risk-category and rule registries.",
+        "operationId": "list_scenario_filters_api_knowledge_scenarios_filters_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioFiltersResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/knowledge/scenarios": {
+      "get": {
+        "tags": [
+          "knowledge"
+        ],
+        "summary": "List Scenarios",
+        "operationId": "list_scenarios_api_knowledge_scenarios_get",
+        "parameters": [
+          {
+            "name": "vertical",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact vertical slug.",
+              "title": "Vertical"
+            },
+            "description": "Exact vertical slug."
+          },
+          {
+            "name": "room_type_hint",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ROOM_CONTEXTS key.",
+              "title": "Room Type Hint"
+            },
+            "description": "ROOM_CONTEXTS key."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Derived risk bucket (keyword match). See /scenarios/filters \u2192 risk_categories.",
+              "title": "Category"
+            },
+            "description": "Derived risk bucket (keyword match). See /scenarios/filters \u2192 risk_categories."
+          },
+          {
+            "name": "rule_ref",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Scenario must reference this policy id.",
+              "title": "Rule Ref"
+            },
+            "description": "Scenario must reference this policy id."
+          },
+          {
+            "name": "scenario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact scenario id.",
+              "title": "Scenario Id"
+            },
+            "description": "Exact scenario id."
+          },
+          {
+            "name": "id_prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Scenario id starts with this prefix.",
+              "title": "Id Prefix"
+            },
+            "description": "Scenario id starts with this prefix."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive substring over narrative + id + vertical.",
+              "title": "Q"
+            },
+            "description": "Case-insensitive substring over narrative + id + vertical."
+          },
+          {
+            "name": "min_depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 20,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum scenario_depth_score.",
+              "title": "Min Depth"
+            },
+            "description": "Minimum scenario_depth_score."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 500,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Max items to return after offset.",
+              "title": "Limit"
+            },
+            "description": "Max items to return after offset."
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 0,
+              "description": "Skip this many filtered rows.",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Skip this many filtered rows."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenariosListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/knowledge/scenarios/{scenario_id}": {
+      "get": {
+        "tags": [
+          "knowledge"
+        ],
+        "summary": "Get Scenario",
+        "operationId": "get_scenario_api_knowledge_scenarios__scenario_id__get",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnhancementScenarioItem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "summary": "Health Ready",
+        "description": "Readiness: verifies database connectivity (for load balancers / k8s).",
+        "operationId": "health_ready_api_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiKeyCreate": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "skip_connection_test": {
+            "type": "boolean",
+            "title": "Skip Connection Test",
+            "description": "If True, store without contacting provider; is_valid stays False.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "api_key"
+        ],
+        "title": "ApiKeyCreate"
+      },
+      "ApiKeyResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "masked_key": {
+            "type": "string",
+            "title": "Masked Key"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "is_valid": {
+            "type": "boolean",
+            "title": "Is Valid"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "provider",
+          "masked_key",
+          "label",
+          "is_valid",
+          "created_at"
+        ],
+        "title": "ApiKeyResponse"
+      },
+      "ApiKeyValidateRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "api_key"
+        ],
+        "title": "ApiKeyValidateRequest"
+      },
+      "ApiKeyValidateSavedRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider"
+        ],
+        "title": "ApiKeyValidateSavedRequest",
+        "description": "Validate the key already stored for this provider (server decrypts)."
+      },
+      "Body_upload_images_api_images_upload_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_images_api_images_upload_post"
+      },
+      "Body_upload_local_improve_version_api_images__image_id__local_improve_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_local_improve_version_api_images__image_id__local_improve_post"
+      },
+      "CostEstimateResponse": {
+        "properties": {
+          "enhancement_cost": {
+            "type": "number",
+            "title": "Enhancement Cost"
+          },
+          "upscale_cost": {
+            "type": "number",
+            "title": "Upscale Cost"
+          },
+          "total_cost": {
+            "type": "number",
+            "title": "Total Cost"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "details": {
+            "type": "string",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enhancement_cost",
+          "upscale_cost",
+          "total_cost",
+          "provider",
+          "model",
+          "details"
+        ],
+        "title": "CostEstimateResponse"
+      },
+      "EmbedCheckRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 4,
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "EmbedCheckRequest"
+      },
+      "EmbedCheckResponse": {
+        "properties": {
+          "final_url": {
+            "type": "string",
+            "title": "Final Url"
+          },
+          "embed_allowed": {
+            "type": "boolean",
+            "title": "Embed Allowed"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "final_url",
+          "embed_allowed"
+        ],
+        "title": "EmbedCheckResponse"
+      },
+      "EnhancementRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider",
+            "default": "openai"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "gpt-image-1"
+          },
+          "lighting": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lighting"
+          },
+          "quality_preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Preset"
+          },
+          "perspective": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perspective"
+          },
+          "room_type": {
+            "type": "string",
+            "title": "Room Type",
+            "default": "general"
+          },
+          "custom_prompt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Prompt"
+          },
+          "output_format": {
+            "type": "string",
+            "title": "Output Format",
+            "default": "png"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality",
+            "default": "high"
+          },
+          "auto_rotation_rad": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Rotation Rad",
+            "description": "Roll in radians from browser Sobel estimator; used with auto perspective + cloud plate."
+          },
+          "improve_input_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Improve Input Version Id",
+            "description": "Required when provider is openai or gemini: ImageVersion id from POST .../local-improve (browser Improve output). Cloud models always enhance this raster, never the raw upload."
+          }
+        },
+        "type": "object",
+        "title": "EnhancementRequest"
+      },
+      "EnhancementScenarioItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "vertical": {
+            "type": "string",
+            "title": "Vertical"
+          },
+          "room_type_hint": {
+            "type": "string",
+            "title": "Room Type Hint"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "setup": {
+            "type": "string",
+            "title": "Setup"
+          },
+          "forbidden_model_behaviors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Forbidden Model Behaviors"
+          },
+          "allowed_model_behaviors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowed Model Behaviors"
+          },
+          "rule_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rule Refs"
+          },
+          "risk_categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risk Categories",
+            "description": "Keyword-derived risk buckets (see GET /api/knowledge/scenarios/filters)."
+          },
+          "depth_score": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Depth Score",
+            "description": "Heuristic richness score for the scenario narrative."
+          },
+          "rule_summaries": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Rule Summaries",
+            "description": "rule_ref id \u2192 short policy line from the server registry."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "vertical",
+          "room_type_hint",
+          "title",
+          "setup",
+          "forbidden_model_behaviors",
+          "allowed_model_behaviors",
+          "rule_refs",
+          "depth_score"
+        ],
+        "title": "EnhancementScenarioItem",
+        "description": "One catalog row plus derived intelligence for clients."
+      },
+      "FullPipelineRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider",
+            "default": "openai"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "gpt-image-1"
+          },
+          "lighting": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lighting",
+            "default": "bright"
+          },
+          "quality_preset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Preset",
+            "default": "full_enhance"
+          },
+          "perspective": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perspective"
+          },
+          "room_type": {
+            "type": "string",
+            "title": "Room Type",
+            "default": "general"
+          },
+          "custom_prompt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Prompt"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality",
+            "default": "high"
+          },
+          "auto_rotation_rad": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Rotation Rad",
+            "description": "Roll in radians for auto perspective when using cloud enhance."
+          },
+          "improve_input_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Improve Input Version Id",
+            "description": "Required for OpenAI/Gemini full pipeline: id of an ImageVersion with provider=improve (browser Improve output). Cloud models enhance this raster, not the raw upload."
+          },
+          "scale_factor": {
+            "type": "integer",
+            "title": "Scale Factor",
+            "default": 2
+          },
+          "target_resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Resolution",
+            "default": "4k"
+          },
+          "output_format": {
+            "type": "string",
+            "title": "Output Format",
+            "default": "png"
+          }
+        },
+        "type": "object",
+        "title": "FullPipelineRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HistoryEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "input_width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Width"
+          },
+          "input_height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Height"
+          },
+          "output_width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Width"
+          },
+          "output_height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Height"
+          },
+          "scale_factor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scale Factor"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "status",
+          "created_at"
+        ],
+        "title": "HistoryEntry"
+      },
+      "ImageDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "original_filename": {
+            "type": "string",
+            "title": "Original Filename"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime Type"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ImageVersionResponse"
+            },
+            "type": "array",
+            "title": "Versions",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "original_filename",
+          "created_at"
+        ],
+        "title": "ImageDetailResponse"
+      },
+      "ImageGenerationComposeRequest": {
+        "properties": {
+          "user_request": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 3,
+            "title": "User Request"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "gemini"
+            ],
+            "title": "Provider",
+            "description": "Which provider's key to use for the interpretation LLM (match the key you use to generate).",
+            "default": "openai"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_request"
+        ],
+        "title": "ImageGenerationComposeRequest",
+        "description": "Turn natural language into a concrete image prompt (preview before generation)."
+      },
+      "ImageGenerationComposeResponse": {
+        "properties": {
+          "interpreted_prompt": {
+            "type": "string",
+            "title": "Interpreted Prompt",
+            "description": "Refined prompt ready for the image model."
+          },
+          "short_title": {
+            "type": "string",
+            "title": "Short Title",
+            "description": "Short label for filenames and UI."
+          }
+        },
+        "type": "object",
+        "required": [
+          "interpreted_prompt",
+          "short_title"
+        ],
+        "title": "ImageGenerationComposeResponse"
+      },
+      "ImageGenerationGenerateRequest": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Description",
+            "description": "Natural language (interpret=True) or exact prompt (interpret=False)."
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "gemini"
+            ],
+            "title": "Provider"
+          },
+          "interpret": {
+            "type": "boolean",
+            "title": "Interpret",
+            "description": "When True, run an LLM step to expand the description into a detailed image prompt.",
+            "default": true
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 2,
+            "title": "Model"
+          },
+          "quality": {
+            "type": "string",
+            "title": "Quality",
+            "description": "Image quality: low | medium | high \u2014 passed to OpenAI; same tier is applied to Gemini (prompt + encoder settings) for matching behavior.",
+            "default": "high"
+          },
+          "output_format": {
+            "type": "string",
+            "title": "Output Format",
+            "description": "png, jpeg, or webp \u2014 OpenAI returns that format natively; Gemini output is re-encoded to the same format and file extension.",
+            "default": "png"
+          },
+          "run_enhancement_pipeline": {
+            "type": "boolean",
+            "title": "Run Enhancement Pipeline",
+            "description": "Phase 2: run full enhancement after generation \u2014 not implemented yet.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "provider",
+          "model"
+        ],
+        "title": "ImageGenerationGenerateRequest",
+        "description": "Generate a new raster from text; optionally interpret vague text first."
+      },
+      "ImageGenerationGenerateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "original_filename": {
+            "type": "string",
+            "title": "Original Filename"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime Type"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ImageVersionResponse"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "resolved_prompt": {
+            "type": "string",
+            "title": "Resolved Prompt",
+            "description": "Exact prompt sent to the image API."
+          },
+          "used_interpretation": {
+            "type": "boolean",
+            "title": "Used Interpretation",
+            "description": "Whether the LLM interpretation step ran."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "original_filename",
+          "created_at",
+          "resolved_prompt",
+          "used_interpretation"
+        ],
+        "title": "ImageGenerationGenerateResponse",
+        "description": "New Image row plus generation metadata."
+      },
+      "ImageUploadResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "original_filename": {
+            "type": "string",
+            "title": "Original Filename"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime Type"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ImageVersionResponse"
+            },
+            "type": "array",
+            "title": "Versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "original_filename",
+          "created_at"
+        ],
+        "title": "ImageUploadResponse"
+      },
+      "ImageVersionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "version_type": {
+            "type": "string",
+            "title": "Version Type"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size Bytes"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "scale_factor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scale Factor"
+          },
+          "processing_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processing Cost Usd"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "prompt_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Used"
+          },
+          "source_job_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Job Type"
+          },
+          "generation_params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation Params"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "version_type",
+          "created_at"
+        ],
+        "title": "ImageVersionResponse"
+      },
+      "ImportUrlImageHint": {
+        "properties": {
+          "alt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "title": "ImportUrlImageHint",
+        "description": "Per-URL context from the scrape UI (same order as urls). Helps Groq match Gemini-style names."
+      },
+      "ImportUrlsRequest": {
+        "properties": {
+          "urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Urls"
+          },
+          "use_groq_naming": {
+            "type": "boolean",
+            "title": "Use Groq Naming",
+            "description": "When True and user has a saved Groq key, rename each import using Groq (text-only; rules align with export AI naming).",
+            "default": false
+          },
+          "page_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Url",
+            "description": "Final page URL after redirects \u2014 context for listing-style names."
+          },
+          "image_hints": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ImportUrlImageHint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Hints",
+            "description": "Optional list parallel to urls (alt, source). Must match len(urls) when set."
+          }
+        },
+        "type": "object",
+        "required": [
+          "urls"
+        ],
+        "title": "ImportUrlsRequest"
+      },
+      "JobResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "image_id": {
+            "type": "string",
+            "title": "Image Id"
+          },
+          "job_type": {
+            "type": "string",
+            "title": "Job Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "progress_pct": {
+            "type": "integer",
+            "title": "Progress Pct"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "result_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Version Id"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "image_id",
+          "job_type",
+          "status",
+          "progress_pct",
+          "created_at"
+        ],
+        "title": "JobResponse"
+      },
+      "LocalDevLoginBody": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Email",
+            "default": ""
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Password",
+            "default": ""
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          }
+        },
+        "type": "object",
+        "title": "LocalDevLoginBody",
+        "description": "Credentials for LOCAL_DEV_MODE JWT (never used in production Supabase flow)."
+      },
+      "PresetsResponse": {
+        "properties": {
+          "lighting": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Lighting"
+          },
+          "quality": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Quality"
+          },
+          "perspective": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Perspective"
+          },
+          "room_types": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Room Types"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lighting",
+          "quality",
+          "perspective",
+          "room_types"
+        ],
+        "title": "PresetsResponse"
+      },
+      "ScenarioFiltersResponse": {
+        "properties": {
+          "verticals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Verticals"
+          },
+          "room_type_hints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Room Type Hints"
+          },
+          "risk_categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risk Categories"
+          },
+          "rule_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rule Refs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "verticals",
+          "room_type_hints",
+          "risk_categories",
+          "rule_refs"
+        ],
+        "title": "ScenarioFiltersResponse",
+        "description": "Dropdown / facet values for QA UIs."
+      },
+      "ScenariosListResponse": {
+        "properties": {
+          "catalog_version": {
+            "type": "integer",
+            "title": "Catalog Version"
+          },
+          "catalog_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Description"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Scenarios in the full catalog before filters."
+          },
+          "filtered": {
+            "type": "integer",
+            "title": "Filtered",
+            "description": "Count after filters, before limit/offset slice."
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "default": 0
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EnhancementScenarioItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "catalog_version",
+          "total",
+          "filtered",
+          "items"
+        ],
+        "title": "ScenariosListResponse"
+      },
+      "ScrapePageRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 4,
+            "title": "Url"
+          },
+          "use_rendered_scrape": {
+            "type": "boolean",
+            "title": "Use Rendered Scrape",
+            "description": "When True: Zyte API (browser HTML) when a key is available, else direct HTTP. (use_firecrawl is a legacy JSON alias for this flag.)",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "ScrapePageRequest"
+      },
+      "ScrapePageResponse": {
+        "properties": {
+          "page_url": {
+            "type": "string",
+            "title": "Page Url"
+          },
+          "final_url": {
+            "type": "string",
+            "title": "Final Url"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ScrapedImageOut"
+            },
+            "type": "array",
+            "title": "Images"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          },
+          "scrape_image_cap": {
+            "type": "integer",
+            "title": "Scrape Image Cap",
+            "description": "Maximum image URLs the server will return for one scan (list may be truncated)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "page_url",
+          "final_url",
+          "images",
+          "scrape_image_cap"
+        ],
+        "title": "ScrapePageResponse"
+      },
+      "ScrapedImageOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "alt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "source"
+        ],
+        "title": "ScrapedImageOut"
+      },
+      "SuggestFilenameRequest": {
+        "properties": {
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "Version ID; omit for original."
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider",
+            "description": "'openai' or 'gemini' \u2014 must match a saved API key. Gemini 2.5 Flash-Lite is default for low-cost naming.",
+            "default": "gemini"
+          }
+        },
+        "type": "object",
+        "title": "SuggestFilenameRequest",
+        "description": "Which image bytes to analyze (original vs a version)."
+      },
+      "SuggestFilenameResponse": {
+        "properties": {
+          "basename": {
+            "type": "string",
+            "title": "Basename"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Tokens"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
+          },
+          "cost_note": {
+            "type": "string",
+            "title": "Cost Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "basename"
+        ],
+        "title": "SuggestFilenameResponse"
+      },
+      "UpscaleRequest": {
+        "properties": {
+          "scale_factor": {
+            "type": "integer",
+            "title": "Scale Factor",
+            "default": 2
+          },
+          "target_resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Resolution"
+          },
+          "output_format": {
+            "type": "string",
+            "title": "Output Format",
+            "default": "png"
+          }
+        },
+        "type": "object",
+        "title": "UpscaleRequest"
+      },
+      "UsageStatsResponse": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "images_uploaded": {
+            "type": "integer",
+            "title": "Images Uploaded"
+          },
+          "images_enhanced": {
+            "type": "integer",
+            "title": "Images Enhanced"
+          },
+          "images_upscaled": {
+            "type": "integer",
+            "title": "Images Upscaled"
+          },
+          "total_cost_usd": {
+            "type": "number",
+            "title": "Total Cost Usd"
+          },
+          "api_calls_openai": {
+            "type": "integer",
+            "title": "Api Calls Openai"
+          },
+          "api_calls_gemini": {
+            "type": "integer",
+            "title": "Api Calls Gemini"
+          },
+          "api_calls_replicate": {
+            "type": "integer",
+            "title": "Api Calls Replicate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "images_uploaded",
+          "images_enhanced",
+          "images_upscaled",
+          "total_cost_usd",
+          "api_calls_openai",
+          "api_calls_gemini",
+          "api_calls_replicate"
+        ],
+        "title": "UsageStatsResponse"
+      },
+      "UsageSummary": {
+        "properties": {
+          "total_images": {
+            "type": "integer",
+            "title": "Total Images"
+          },
+          "total_enhanced": {
+            "type": "integer",
+            "title": "Total Enhanced"
+          },
+          "total_upscaled": {
+            "type": "integer",
+            "title": "Total Upscaled"
+          },
+          "total_cost": {
+            "type": "number",
+            "title": "Total Cost"
+          },
+          "daily_stats": {
+            "items": {
+              "$ref": "#/components/schemas/UsageStatsResponse"
+            },
+            "type": "array",
+            "title": "Daily Stats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_images",
+          "total_enhanced",
+          "total_upscaled",
+          "total_cost",
+          "daily_stats"
+        ],
+        "title": "UsageSummary"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "images_processed": {
+            "type": "integer",
+            "title": "Images Processed"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "images_processed",
+          "created_at"
+        ],
+        "title": "UserResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

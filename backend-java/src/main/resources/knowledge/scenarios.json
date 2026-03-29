@@ -1,0 +1,1344 @@
+{
+  "version": 3,
+  "description": "Knowledge scenarios for listing-style image enhancement: expected policy outcomes aligned with prompt_templates (zero additions, spatial fidelity, fixture lock). Use for QA checklists, eval rubrics, and onboarding. v2 adds cross-industry scenarios (education, healthcare, industrial, transportation, hospitality ops) and intelligence-test-friendly edge cases. v3: pet-floor amenities + twin-shade lamp + dresser drawer-grid regression (real listing pair).",
+  "scenarios": [
+    {
+      "id": "hotel_bedroom_one_lamp_one_nightstand",
+      "vertical": "hotels",
+      "room_type_hint": "bedroom",
+      "title": "Asymmetric bedside — single lamp",
+      "setup": "King bed with one nightstand and one table lamp; opposite bedside is empty floor/wall.",
+      "forbidden_model_behaviors": [
+        "Add a second nightstand or twin lamp for symmetry",
+        "Move the existing lamp to the empty side",
+        "Place a floor lamp in the empty corner to balance composition"
+      ],
+      "allowed_model_behaviors": [
+        "Brighten via exposure and tone",
+        "Straighten verticals; mild perspective cleanup",
+        "Listing reframe (front/side/center) without moving furniture"
+      ],
+      "rule_refs": [
+        "no_fake_symmetry",
+        "no_new_light_fixtures",
+        "spatial_fidelity",
+        "fixture_count_lock_preamble",
+        "zero_additions_product_policy",
+        "listing_reframe_only"
+      ]
+    },
+    {
+      "id": "hotel_bedroom_bath_door_visible",
+      "vertical": "hotels",
+      "room_type_hint": "bedroom",
+      "title": "Bedroom with bathroom doorway on side wall",
+      "setup": "Bed hero with visible en-suite or hall bath opening showing tile or light beyond.",
+      "forbidden_model_behaviors": [
+        "Seal the doorway with headboard wall or built-ins",
+        "Replace opening with a window or artwork",
+        "Slide the bed to cover the doorway for a cleaner hero"
+      ],
+      "allowed_model_behaviors": [
+        "Reframe so doorway remains visible per listing angle",
+        "Recover highlight detail in bright bathroom without removing the opening"
+      ],
+      "rule_refs": [
+        "doorway_opening_preservation",
+        "spatial_fidelity",
+        "listing_reframe_only",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hotel_bedroom_gap_dresser_bath_door",
+      "vertical": "hotels",
+      "room_type_hint": "bedroom",
+      "title": "Empty strip between bath door and TV dresser",
+      "setup": "Doorway to bath, then bare wall/floor, then dresser with TV.",
+      "forbidden_model_behaviors": [
+        "Insert a console table, credenza, or plant in the gap",
+        "Add a bench or luggage rack in the empty floor zone"
+      ],
+      "allowed_model_behaviors": [
+        "Widen crop revealing more bare wall/floor matching paint and flooring",
+        "Color and exposure consistency across the gap"
+      ],
+      "rule_refs": [
+        "gap_empty_architecture_only",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hotel_bedroom_desk_one_side_nightstand_other",
+      "vertical": "hotels",
+      "room_type_hint": "bedroom",
+      "title": "Desk on one side of bed, nightstand on the other",
+      "setup": "Mixed bedside functions common in extended-stay rooms.",
+      "forbidden_model_behaviors": [
+        "Replace desk with a second nightstand to match the other side",
+        "Mirror the desk to the opposite wall",
+        "Add a task lamp on the desk if none exists in source"
+      ],
+      "allowed_model_behaviors": [
+        "Sharpen wood grain on desk; white balance for lamp and screen glow",
+        "Center-angle crop that keeps both sides readable"
+      ],
+      "rule_refs": [
+        "no_fake_symmetry",
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "listing_reframe_only",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hotel_bathroom_walk_in_partial",
+      "vertical": "hotels",
+      "room_type_hint": "bathroom",
+      "title": "Glass shower partial reflection",
+      "setup": "Vanity, mirror, glass enclosure; reflections show adjacent bedroom or hall.",
+      "forbidden_model_behaviors": [
+        "Paint out reflection to invent a different room",
+        "Add towel stacks or spa props not on surfaces in source",
+        "Change fixture count (sconces, pendants)"
+      ],
+      "allowed_model_behaviors": [
+        "Denoise tiles; correct WB; reduce glare on glass",
+        "Straighten vertical tile lines"
+      ],
+      "rule_refs": [
+        "photographic_only",
+        "no_new_light_fixtures",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hotel_lobby_seating_clusters",
+      "vertical": "hotels",
+      "room_type_hint": "lobby",
+      "title": "Lobby with asymmetric sofa groups",
+      "setup": "Multiple seating islands; pathways to front desk and elevators.",
+      "forbidden_model_behaviors": [
+        "Clone a sofa to fill dead space",
+        "Add potted trees or dividers not in photo",
+        "Relocate chairs to fake symmetry around a rug"
+      ],
+      "allowed_model_behaviors": [
+        "Even exposure across deep space; lift shadows under furniture",
+        "Perspective correction for tall atrium lines"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "gap_empty_architecture_only",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy",
+        "no_fake_symmetry"
+      ]
+    },
+    {
+      "id": "hotel_restaurant_table_setting",
+      "vertical": "hotels",
+      "room_type_hint": "restaurant",
+      "title": "Hotel restaurant dining room",
+      "setup": "Tables, chairs, place settings, existing centerpieces only as photographed.",
+      "forbidden_model_behaviors": [
+        "Add plates, wine glasses, or cutlery on empty tables",
+        "Insert people dining",
+        "Change chair count or move tables to clear aisles"
+      ],
+      "allowed_model_behaviors": [
+        "Warm lighting preset on existing fixtures only",
+        "Sharpen wood and fabric textures"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "photographic_only",
+        "zero_additions_product_policy",
+        "people_identity_preserve"
+      ]
+    },
+    {
+      "id": "hotel_pool_deck_loungers",
+      "vertical": "hotels",
+      "room_type_hint": "pool",
+      "title": "Pool deck with partial lounger row",
+      "setup": "Water line, deck, some loungers; open deck space.",
+      "forbidden_model_behaviors": [
+        "Duplicate loungers to fill deck",
+        "Add umbrellas or cabanas not in frame",
+        "Move loungers into perfect grid"
+      ],
+      "allowed_model_behaviors": [
+        "HDR-style balance between sky and water",
+        "Remove sensor dust spots; sharpen deck texture"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "exterior_structure_lock",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hotel_exterior_facade_angle",
+      "vertical": "hotels",
+      "room_type_hint": "exterior",
+      "title": "Building facade oblique angle",
+      "setup": "Street-level or podium view; signage may be partial.",
+      "forbidden_model_behaviors": [
+        "Add floors, wings, or balconies",
+        "Invent a different brand sign or rewrite lettering",
+        "Drop in cars or pedestrians not present"
+      ],
+      "allowed_model_behaviors": [
+        "Verticals and horizon correction",
+        "Sky recovery without replacing the building silhouette"
+      ],
+      "rule_refs": [
+        "exterior_structure_lock",
+        "menu_truthfulness",
+        "photographic_only",
+        "full_bleed_no_frames"
+      ]
+    },
+    {
+      "id": "apartment_studio_murphy_or_sofa_bed",
+      "vertical": "apartments",
+      "room_type_hint": "living_room",
+      "title": "Studio combined living and sleep zone",
+      "setup": "Sofa bed or murphy; small kitchenette edge in frame.",
+      "forbidden_model_behaviors": [
+        "Remove kitchenette to look like pure bedroom",
+        "Add room divider furniture not in source",
+        "Relocate sofa to window wall"
+      ],
+      "allowed_model_behaviors": [
+        "Bright, even exposure for small space",
+        "Side-angle depth emphasis without new objects"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "doorway_opening_preservation",
+        "listing_reframe_only",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "apartment_kitchen_galley",
+      "vertical": "apartments",
+      "room_type_hint": "kitchen",
+      "title": "Narrow galley kitchen",
+      "setup": "Counters, appliances, upper cabinets; possibly one pendant.",
+      "forbidden_model_behaviors": [
+        "Add pendant lights or under-cabinet strips not visible",
+        "Put fruit bowls or appliances on empty counter",
+        "Change appliance positions or swap fridge door hinge side"
+      ],
+      "allowed_model_behaviors": [
+        "WB correction under mixed LED and daylight",
+        "Specular highlight control on counters"
+      ],
+      "rule_refs": [
+        "no_new_light_fixtures",
+        "spatial_fidelity",
+        "photographic_only",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "apartment_balcony_city_view",
+      "vertical": "apartments",
+      "room_type_hint": "exterior",
+      "title": "Balcony slab and railing",
+      "setup": "Sliding door reveal; railing; city or courtyard beyond.",
+      "forbidden_model_behaviors": [
+        "Add outdoor furniture on empty balcony",
+        "Change railing style or glass panels",
+        "Replace real skyline with stock cityscape"
+      ],
+      "allowed_model_behaviors": [
+        "Lift shadows on balcony floor; sharpen railing mesh",
+        "Corner outpaint only for architecture continuation"
+      ],
+      "rule_refs": [
+        "corner_outpaint_architecture_only",
+        "spatial_fidelity",
+        "exterior_structure_lock",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "re_residential_living_staged_sparse",
+      "vertical": "real_estate",
+      "room_type_hint": "living_room",
+      "title": "Lightly staged living — negative space on rug",
+      "setup": "Sofa, coffee table, large bare rug area.",
+      "forbidden_model_behaviors": [
+        "Add armchairs, ottomans, or floor lamps in empty rug",
+        "Hang art on blank walls not dressed in source",
+        "Move sofa to center the room differently"
+      ],
+      "allowed_model_behaviors": [
+        "Bright natural preset; sharpen flooring and textile",
+        "Front or center angle reframe on existing layout"
+      ],
+      "rule_refs": [
+        "gap_empty_architecture_only",
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "listing_reframe_only",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "re_residential_empty_vacant",
+      "vertical": "real_estate",
+      "room_type_hint": "general",
+      "title": "Vacant room — only flooring and shells",
+      "setup": "No furniture; outlets, baseboards, windows.",
+      "forbidden_model_behaviors": [
+        "Stage with virtual furniture",
+        "Add area rug or plants",
+        "Close off closet opening with wall"
+      ],
+      "allowed_model_behaviors": [
+        "Exposure and color to sell cleanliness",
+        "Verticals straight; window view balanced"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "doorway_opening_preservation",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "re_residential_open_floor_kitchen_dining",
+      "vertical": "real_estate",
+      "room_type_hint": "kitchen",
+      "title": "Open plan kitchen to dining",
+      "setup": "Island, dining table partial; sightlines to living.",
+      "forbidden_model_behaviors": [
+        "Remove island or change footprint",
+        "Add pendant trio when only one exists",
+        "Slide dining table toward camera for symmetry"
+      ],
+      "allowed_model_behaviors": [
+        "Consistent WB across zones",
+        "Wide side-angle depth read"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "listing_reframe_only",
+        "zero_additions_product_policy",
+        "no_fake_symmetry"
+      ]
+    },
+    {
+      "id": "re_commercial_retail_floor",
+      "vertical": "real_estate",
+      "room_type_hint": "general",
+      "title": "Retail shell or showroom",
+      "setup": "Open floor, columns, ceiling grid.",
+      "forbidden_model_behaviors": [
+        "Add shelving units or kiosks",
+        "Change column count or ceiling tile pattern",
+        "Paint branding murals not in source"
+      ],
+      "allowed_model_behaviors": [
+        "Even illumination; reduce color cast from fluorescents",
+        "Perspective correction"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "exterior_structure_lock",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "restaurant_fine_dining_table",
+      "vertical": "restaurants",
+      "room_type_hint": "restaurant",
+      "title": "Set table with visible menu card",
+      "setup": "Glassware and silver as photographed; printed menu or QR tent.",
+      "forbidden_model_behaviors": [
+        "Rewrite prices or dish names on menu",
+        "Add wine bottle not in shot",
+        "Clone place settings to empty seats"
+      ],
+      "allowed_model_behaviors": [
+        "Warm evening mood using existing lights only",
+        "Sharpen text edges without changing copy"
+      ],
+      "rule_refs": [
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "food_plate_integrity",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "restaurant_bar_backlit_bottles",
+      "vertical": "restaurants",
+      "room_type_hint": "restaurant",
+      "title": "Back bar with bottle rows",
+      "setup": "Shelves, labels partially readable, taps.",
+      "forbidden_model_behaviors": [
+        "Invent premium bottle labels not in source",
+        "Add tap handles or neon signs",
+        "Rearrange bottle order for color gradient"
+      ],
+      "allowed_model_behaviors": [
+        "HDR between backlit bottles and bar top",
+        "Denoise without smearing labels"
+      ],
+      "rule_refs": [
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "restaurant_patio_string_lights",
+      "vertical": "restaurants",
+      "room_type_hint": "exterior",
+      "title": "Outdoor patio seating",
+      "setup": "Existing string lights, tables, chairs as shot.",
+      "forbidden_model_behaviors": [
+        "Add string light strands beyond what is visible",
+        "Insert heaters or planters",
+        "Move tables to fake social spacing"
+      ],
+      "allowed_model_behaviors": [
+        "Blue hour sky with warm existing bulbs",
+        "Sharpen pavement and chair mesh"
+      ],
+      "rule_refs": [
+        "no_new_light_fixtures",
+        "spatial_fidelity",
+        "exterior_structure_lock",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "food_hero_dish_overhead",
+      "vertical": "food",
+      "room_type_hint": "general",
+      "title": "Overhead hero of single plate",
+      "setup": "One main plate, crumbs and sauce as captured.",
+      "forbidden_model_behaviors": [
+        "Add garnish, sesame seeds, or drizzle",
+        "Duplicate partial second plate from mirror",
+        "Replace protein with different ingredient"
+      ],
+      "allowed_model_behaviors": [
+        "Sharpen texture; lift shadows in bowl",
+        "Color accuracy for food tones"
+      ],
+      "rule_refs": [
+        "food_plate_integrity",
+        "photographic_only",
+        "full_bleed_no_frames"
+      ]
+    },
+    {
+      "id": "food_table_flat_lay_partial",
+      "vertical": "food",
+      "room_type_hint": "general",
+      "title": "Flat lay with intentional negative space",
+      "setup": "Corner of board, one utensil, napkin edge.",
+      "forbidden_model_behaviors": [
+        "Fill negative space with extra props",
+        "Add second dish or drink",
+        "Rotate utensils to perfect parallel grid if that moves them"
+      ],
+      "allowed_model_behaviors": [
+        "Clean background noise; even tabletop color",
+        "Slight rotation of entire frame only (whole-image)"
+      ],
+      "rule_refs": [
+        "food_plate_integrity",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "food_beverage_glass_condensation",
+      "vertical": "food",
+      "room_type_hint": "general",
+      "title": "Cold drink with condensation",
+      "setup": "Single glass; straw or citrus only if present.",
+      "forbidden_model_behaviors": [
+        "Add second glass or bottle",
+        "Change logo on glass or coaster",
+        "Insert ice cubes that alter drink identity"
+      ],
+      "allowed_model_behaviors": [
+        "Highlight recovery on glass; crisp droplets",
+        "White balance for liquid and ice tones without altering cup or branding geometry"
+      ],
+      "rule_refs": [
+        "food_plate_integrity",
+        "menu_truthfulness",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "hospitality_spa_treatment_room",
+      "vertical": "wellness",
+      "room_type_hint": "general",
+      "title": "Spa room with massage table",
+      "setup": "Table, minimal cart, towels as shown.",
+      "forbidden_model_behaviors": [
+        "Add aromatherapy diffusers or plants",
+        "Second table or stool not in source",
+        "Move cart to opposite wall"
+      ],
+      "allowed_model_behaviors": [
+        "Calm warm lighting from existing sources",
+        "Clean linen whites"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "office_conference_av_wall",
+      "vertical": "office",
+      "room_type_hint": "general",
+      "title": "Conference room with blank screen",
+      "setup": "Table, chairs, display off or black.",
+      "forbidden_model_behaviors": [
+        "Burn in fake slide content or logos",
+        "Add chairs to head of table",
+        "Remove visible cable trays or outlets"
+      ],
+      "allowed_model_behaviors": [
+        "Even room lights; reduce glare on screen glass",
+        "Straighten verticals"
+      ],
+      "rule_refs": [
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "photographic_only",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "retail_boutique_rack_gap",
+      "vertical": "retail",
+      "room_type_hint": "general",
+      "title": "Clothing rack with sparse hangers",
+      "setup": "Some empty rail; visible inventory as shot.",
+      "forbidden_model_behaviors": [
+        "Duplicate garments to fill rack",
+        "Change garment colors or patterns",
+        "Add mannequin not in store"
+      ],
+      "allowed_model_behaviors": [
+        "Color accurate textiles; reduce hanger shine",
+        "Perspective correction for rack lines"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "event_ballroom_round_tables_partial",
+      "vertical": "events",
+      "room_type_hint": "general",
+      "title": "Ballroom setup — some tables empty",
+      "setup": "Mix of dressed and undressed rounds.",
+      "forbidden_model_behaviors": [
+        "Copy centerpieces to bare tables",
+        "Add chairs to meet capacity",
+        "Change ceiling rig or drapery"
+      ],
+      "allowed_model_behaviors": [
+        "Even exposure for cavernous space",
+        "Noise reduction in shadows"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "corner_outpaint_after_perspective_plate",
+      "vertical": "cross_cutting",
+      "room_type_hint": "general",
+      "title": "White triangular voids after perspective correction",
+      "setup": "Listing angle pipeline produced edge voids.",
+      "forbidden_model_behaviors": [
+        "Clone bed or sofa into void",
+        "Place lamp or art in wedge",
+        "Relocate real furniture while filling"
+      ],
+      "allowed_model_behaviors": [
+        "Extend wall paint, baseboard, ceiling line, floor grain",
+        "Match lighting direction from adjacent pixels"
+      ],
+      "rule_refs": [
+        "corner_outpaint_architecture_only",
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "listing_side_angle_depth_axis_lock",
+      "vertical": "cross_cutting",
+      "room_type_hint": "bedroom",
+      "title": "Side angle — bath door must stay on correct side of depth",
+      "setup": "End-of-room vantage; bathroom opening on viewer right in source.",
+      "forbidden_model_behaviors": [
+        "Jump camera to opposite narrow end",
+        "Mirror room so bath flips sides",
+        "Seal bath opening for cleaner far wall"
+      ],
+      "allowed_model_behaviors": [
+        "Lengthwise depth with plumb verticals",
+        "Widen crop while preserving openings"
+      ],
+      "rule_refs": [
+        "listing_reframe_only",
+        "doorway_opening_preservation",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "people_staged_tour_optional_presence",
+      "vertical": "cross_cutting",
+      "room_type_hint": "general",
+      "title": "Agent or guest visible at edge of frame",
+      "setup": "Partial person in mirror or doorway.",
+      "forbidden_model_behaviors": [
+        "Remove person if they are part of truthful capture policy",
+        "Add models walking through scene",
+        "Change clothing to stage lifestyle"
+      ],
+      "allowed_model_behaviors": [
+        "Photographic cleanup only per product policy",
+        "Privacy blur if product explicitly supports it"
+      ],
+      "rule_refs": [
+        "people_identity_preserve",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "hotel_connecting_suite_door_pair",
+      "vertical": "hotels",
+      "room_type_hint": "bedroom",
+      "title": "Adjoining suite — pair of connecting doors",
+      "setup": "Two door leaves or vestibule between rooms; sightline into second sleeping zone.",
+      "forbidden_model_behaviors": [
+        "Remove one door to simplify the wall plane",
+        "Seal the connecting opening to look like a single room",
+        "Replace the opening with a window or artwork"
+      ],
+      "allowed_model_behaviors": [
+        "White balance across both rooms; consistent exposure",
+        "Vertical alignment of door jambs; mild perspective cleanup",
+        "Listing reframe that keeps both openings readable"
+      ],
+      "rule_refs": [
+        "doorway_opening_preservation",
+        "spatial_fidelity",
+        "listing_reframe_only",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hotel_breakfast_buffet_partial_chafers",
+      "vertical": "hotels",
+      "room_type_hint": "restaurant",
+      "title": "Breakfast buffet — some chafing stations empty",
+      "setup": "Row of heated trays; a few positions have no pans as photographed.",
+      "forbidden_model_behaviors": [
+        "Duplicate chafing dishes or food from adjacent trays into empty slots",
+        "Add steam or food not present in the source",
+        "Rearrange the buffet line to fake fullness"
+      ],
+      "allowed_model_behaviors": [
+        "Even overhead lighting using existing fixtures only",
+        "Sharpen table linens and sneeze guard edges",
+        "Color accuracy for fruit and pastries that are visible"
+      ],
+      "rule_refs": [
+        "food_plate_integrity",
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "apartment_laundry_closet_bifold_open",
+      "vertical": "apartments",
+      "room_type_hint": "general",
+      "title": "In-unit laundry closet — bifold doors folded back",
+      "setup": "Washer-dryer stack; bare side wall; hall or kitchen edge visible.",
+      "forbidden_model_behaviors": [
+        "Close the closet into flush panels if the source shows it open",
+        "Add shelving or baskets on empty wall not in photo",
+        "Slide appliances to center them in frame"
+      ],
+      "allowed_model_behaviors": [
+        "Lift shadow detail inside closet cavity",
+        "Reduce glare on appliance fascias",
+        "Straighten verticals on door tracks"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "doorway_opening_preservation",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "re_garage_empty_no_virtual_staging",
+      "vertical": "real_estate",
+      "room_type_hint": "general",
+      "title": "Residential garage — bare concrete and tracks",
+      "setup": "Overhead door hardware, slab, maybe one outlet; no vehicles.",
+      "forbidden_model_behaviors": [
+        "Virtually stage with tool benches or storage systems",
+        "Paint over stains to imply new slab",
+        "Add vehicles or bikes not in capture"
+      ],
+      "allowed_model_behaviors": [
+        "Exposure to show ceiling height and door mechanism clearly",
+        "Denoise shadow corners; correct WB under mixed lighting"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "photographic_only",
+        "exterior_structure_lock"
+      ]
+    },
+    {
+      "id": "re_rooftop_deck_pergola_partial",
+      "vertical": "real_estate",
+      "room_type_hint": "exterior",
+      "title": "Roof deck with partial pergola coverage",
+      "setup": "Deck boards, railing, city roof deck beyond; some slats cast shadow.",
+      "forbidden_model_behaviors": [
+        "Extend pergola structure beyond what is in frame",
+        "Add lounge furniture on empty deck",
+        "Replace real skyline with stock cityscape"
+      ],
+      "allowed_model_behaviors": [
+        "Balance sky and deck exposure",
+        "Sharpen railing cables and wood grain"
+      ],
+      "rule_refs": [
+        "exterior_structure_lock",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "restaurant_open_kitchen_pass_shelves",
+      "vertical": "restaurants",
+      "room_type_hint": "kitchen",
+      "title": "Open kitchen pass with plated tickets",
+      "setup": "Metal shelf, plates in rack, partial view of line cooks.",
+      "forbidden_model_behaviors": [
+        "Add finished plates in empty rack slots",
+        "Insert steam or motion blur to imply activity",
+        "Move the pass shelf closer to camera"
+      ],
+      "allowed_model_behaviors": [
+        "Recover highlight on stainless; denoise shadow under shelf",
+        "White balance for warm line lights only as present"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "food_plate_integrity",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "food_packaging_brand_macro",
+      "vertical": "food",
+      "room_type_hint": "general",
+      "title": "Packaged retail product — nutrition panel legible",
+      "setup": "Single SKU on counter; small type on label visible.",
+      "forbidden_model_behaviors": [
+        "Rewrite nutrition facts or ingredients",
+        "Swap logo or brand marks",
+        "Add a second SKU to imply variety pack"
+      ],
+      "allowed_model_behaviors": [
+        "Sharpen micro-type without changing characters",
+        "Even lighting on label; reduce plastic wrap glare"
+      ],
+      "rule_refs": [
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "photographic_only",
+        "full_bleed_no_frames"
+      ]
+    },
+    {
+      "id": "education_lecture_hall_sparse_rows",
+      "vertical": "education",
+      "room_type_hint": "general",
+      "title": "Lecture hall — alternating empty seats",
+      "setup": "Fixed seating tiers; pattern of occupied vs empty as shot.",
+      "forbidden_model_behaviors": [
+        "Clone occupants into empty seats",
+        "Remove people to fake an empty room",
+        "Shift arm desks to align rows perfectly"
+      ],
+      "allowed_model_behaviors": [
+        "Even exposure across raked seating",
+        "Straighten verticals on side walls",
+        "Noise reduction in shadow under seats"
+      ],
+      "rule_refs": [
+        "people_identity_preserve",
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "healthcare_waiting_chair_cluster",
+      "vertical": "healthcare",
+      "room_type_hint": "lobby",
+      "title": "Clinic waiting — modular chairs with gaps",
+      "setup": "Vinyl chairs in clusters; clear floor between groups.",
+      "forbidden_model_behaviors": [
+        "Add magazine tables in empty gaps",
+        "Duplicate chair modules to fill floor",
+        "Replace wayfinding signage text"
+      ],
+      "allowed_model_behaviors": [
+        "Bright, clinical white balance",
+        "Clean floor shine without adding objects",
+        "Perspective correction for dropped ceiling grid"
+      ],
+      "rule_refs": [
+        "gap_empty_architecture_only",
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "industrial_warehouse_rack_aisle",
+      "vertical": "industrial",
+      "room_type_hint": "general",
+      "title": "Warehouse aisle — sparse pallet positions",
+      "setup": "Pallet racking; some bays empty; forklift partial at end.",
+      "forbidden_model_behaviors": [
+        "Clone pallets or boxes into empty bays",
+        "Add safety cones or striping not in source",
+        "Change rack height or bay count"
+      ],
+      "allowed_model_behaviors": [
+        "Lift shadow under racking; even fluorescent color",
+        "Sharpen mesh back panels"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "exterior_structure_lock",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "transportation_transit_gate_seating_bank",
+      "vertical": "transportation",
+      "room_type_hint": "lobby",
+      "title": "Transit gate hold room — seating bank with voids",
+      "setup": "Fixed benches; passengers sparse; signage high on wall.",
+      "forbidden_model_behaviors": [
+        "Add travelers on empty bench sections",
+        "Change gate number or airline text on monitors",
+        "Insert vending machines in blank wall zones"
+      ],
+      "allowed_model_behaviors": [
+        "Recover detail in backlit screens without rewriting content",
+        "Denoise ceiling; sharpen floor tile joints"
+      ],
+      "rule_refs": [
+        "people_identity_preserve",
+        "menu_truthfulness",
+        "gap_empty_architecture_only",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hospitality_ops_back_corridor_carts",
+      "vertical": "hospitality_ops",
+      "room_type_hint": "general",
+      "title": "Back-of-house corridor — single housekeeping cart",
+      "setup": "Narrow service hall; one cart; fire door propped as shown.",
+      "forbidden_model_behaviors": [
+        "Duplicate cart to imply staffing level",
+        "Seal fire door opening if visible",
+        "Add wall-mounted dispensers not in photo"
+      ],
+      "allowed_model_behaviors": [
+        "Linear perspective down hall; vertical door frames",
+        "Neutral WB under utilitarian LEDs"
+      ],
+      "rule_refs": [
+        "doorway_opening_preservation",
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "hotel_club_lounge_sectional_asymmetric",
+      "vertical": "hotels",
+      "room_type_hint": "living_room",
+      "title": "Club lounge — L-shaped sectional with one floor lamp",
+      "setup": "Large sectional; single arc lamp; open negative space on rug.",
+      "forbidden_model_behaviors": [
+        "Add a second floor lamp for symmetry",
+        "Insert coffee tables in bare rug area",
+        "Mirror the sectional to complete an imaginary U-shape"
+      ],
+      "allowed_model_behaviors": [
+        "Warm preset on existing lamp glow only",
+        "Sharpen textile weave and wood side table",
+        "Listing center or side angle without moving seating"
+      ],
+      "rule_refs": [
+        "no_fake_symmetry",
+        "no_new_light_fixtures",
+        "fixture_count_lock_preamble",
+        "spatial_fidelity",
+        "listing_reframe_only",
+        "zero_additions_product_policy",
+        "gap_empty_architecture_only"
+      ]
+    },
+    {
+      "id": "retail_supermarket_aisle_void",
+      "vertical": "retail",
+      "room_type_hint": "general",
+      "title": "Grocery aisle — facing gaps on shelf facings",
+      "setup": "Some shelf slots empty; price tags visible; LED cooler glow.",
+      "forbidden_model_behaviors": [
+        "Clone product facings into empty slots",
+        "Change unit prices or promo text on tags",
+        "Add endcap displays not in frame"
+      ],
+      "allowed_model_behaviors": [
+        "Color-accurate packaging on stocked rows",
+        "Reduce cooler banding; sharpen tag edges without OCR edits"
+      ],
+      "rule_refs": [
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "events_wedding_venue_arch_partial",
+      "vertical": "events",
+      "room_type_hint": "general",
+      "title": "Ballroom ceremony — floral arch half dressed",
+      "setup": "Pipe-and-drape; arch frame; partial florals as captured.",
+      "forbidden_model_behaviors": [
+        "Complete the arch with invented blooms",
+        "Add aisle chairs beyond what is visible",
+        "Change drapery color swatches"
+      ],
+      "allowed_model_behaviors": [
+        "Even exposure for mixed tungsten and daylight",
+        "Sharpen fabric pleats on existing drape only"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "cross_cutting_listing_front_twin_beds",
+      "vertical": "cross_cutting",
+      "room_type_hint": "bedroom",
+      "title": "Twin beds — do not merge into one king",
+      "setup": "Two twins with shared nightstand or gap; asymmetric lamp count possible.",
+      "forbidden_model_behaviors": [
+        "Merge twin mattresses into one king visual",
+        "Remove one bed to declutter",
+        "Add matching lamps on both sides if only one exists in source"
+      ],
+      "allowed_model_behaviors": [
+        "Bright linens; correct WB",
+        "Front angle with horizontal hero center without inventing symmetry"
+      ],
+      "rule_refs": [
+        "no_fake_symmetry",
+        "spatial_fidelity",
+        "listing_reframe_only",
+        "fixture_count_lock_preamble",
+        "zero_additions_product_policy",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "cross_cutting_high_iso_noise_bedroom",
+      "vertical": "cross_cutting",
+      "room_type_hint": "bedroom",
+      "title": "Low-light capture — heavy ISO noise",
+      "setup": "Underexposed bedroom; visible chroma noise in shadows; tripod shake absent.",
+      "forbidden_model_behaviors": [
+        "Hallucinate new furniture when denoising shadow regions",
+        "Brighten by painting in lamps not in the photograph",
+        "Remove doorway dark rectangles that are real openings"
+      ],
+      "allowed_model_behaviors": [
+        "Denoise while preserving texture on known bedding",
+        "Lift exposure globally without relocating objects"
+      ],
+      "rule_refs": [
+        "photographic_only",
+        "no_new_light_fixtures",
+        "doorway_opening_preservation",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "cross_cutting_decorative_vignette_guard",
+      "vertical": "cross_cutting",
+      "room_type_hint": "general",
+      "title": "Listing output must stay full-bleed photograph",
+      "setup": "Any interior suitable for OTA thumbnail; model might add stylized edges.",
+      "forbidden_model_behaviors": [
+        "Add letterboxing, faux matting, or gallery frame",
+        "Add watermark, logo bug, or corner branding",
+        "Crop to polaroid-style white borders"
+      ],
+      "allowed_model_behaviors": [
+        "Standard photographic enhancement within full frame",
+        "Perspective and exposure correction to rectangular photo edges"
+      ],
+      "rule_refs": [
+        "full_bleed_no_frames",
+        "photographic_only",
+        "zero_additions_product_policy",
+        "menu_truthfulness"
+      ]
+    },
+    {
+      "id": "office_phone_booth_row_one_open",
+      "vertical": "office",
+      "room_type_hint": "general",
+      "title": "Phone booth pods — one door open",
+      "setup": "Glass pods; one ajar showing interior stool; others closed.",
+      "forbidden_model_behaviors": [
+        "Close the open pod to look uniform",
+        "Add laptops or monitors inside visible pod",
+        "Clone pod skin to hide an empty slot"
+      ],
+      "allowed_model_behaviors": [
+        "Reduce reflections on glass; keep readable interior depth",
+        "Straighten ceiling baffles"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "apartment_sliding_patio_door_stack",
+      "vertical": "apartments",
+      "room_type_hint": "living_room",
+      "title": "Living room — stacked slider partially open",
+      "setup": "Track visible; one panel open to balcony; shear drape as shot.",
+      "forbidden_model_behaviors": [
+        "Close the slider to simplify composition",
+        "Add balcony furniture beyond glass",
+        "Replace real view with stock ocean"
+      ],
+      "allowed_model_behaviors": [
+        "HDR between interior and exterior exposure",
+        "Sharpen frame profiles and handle hardware"
+      ],
+      "rule_refs": [
+        "doorway_opening_preservation",
+        "exterior_structure_lock",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "restaurants_pizza_peel_on_pass",
+      "vertical": "restaurants",
+      "room_type_hint": "kitchen",
+      "title": "Pizza line — peel resting on pass ledge",
+      "setup": "Marble pass; peel; maybe one boxed pie edge; oven mouth visible.",
+      "forbidden_model_behaviors": [
+        "Add pizzas or toppings not in frame",
+        "Move peel to a 'hero' angle that changes its real position",
+        "Insert steam from oven if not in capture"
+      ],
+      "allowed_model_behaviors": [
+        "Sharpen stone and metal; WB for oven glow",
+        "Recover shadow under pass without new props"
+      ],
+      "rule_refs": [
+        "food_plate_integrity",
+        "spatial_fidelity",
+        "no_new_light_fixtures",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hotel_guest_room_tv_wall_blank",
+      "vertical": "hotels",
+      "room_type_hint": "bedroom",
+      "title": "Wall-mounted TV off — black glass rectangle",
+      "setup": "Bracket visible; screen black; no HDMI splash in source.",
+      "forbidden_model_behaviors": [
+        "Burn in channel guide or hotel brand splash",
+        "Remove the TV to fake minimalism",
+        "Add soundbar not mounted in photo"
+      ],
+      "allowed_model_behaviors": [
+        "Control specular rectangle on glass",
+        "Keep bezel and bracket geometry unchanged"
+      ],
+      "rule_refs": [
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "real_estate_stairwell_landing_window",
+      "vertical": "real_estate",
+      "room_type_hint": "general",
+      "title": "Interior stairwell — landing window and handrail",
+      "setup": "Open risers or closed; window on landing; door under stair possible.",
+      "forbidden_model_behaviors": [
+        "Remove understair door to open storage visually",
+        "Change baluster count or spacing",
+        "Replace window view with fake landscape"
+      ],
+      "allowed_model_behaviors": [
+        "Straighten handrail line; vertical newel post",
+        "Balance interior with window exposure"
+      ],
+      "rule_refs": [
+        "doorway_opening_preservation",
+        "exterior_structure_lock",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "gym_floor_equipment_row_gaps",
+      "vertical": "wellness",
+      "room_type_hint": "general",
+      "title": "Fitness floor — cardio row with empty mats",
+      "setup": "Treadmills; open floor markers; mirror wall behind.",
+      "forbidden_model_behaviors": [
+        "Duplicate machines into empty mat bays",
+        "Add dumbbell racks in clear zones",
+        "Replace mirror reflection with stock gym crowd"
+      ],
+      "allowed_model_behaviors": [
+        "Even fluorescents; sharpen belt texture on visible units",
+        "Reduce mirror glare without inventing reflection content"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "salon_styling_station_mirror_row",
+      "vertical": "wellness",
+      "room_type_hint": "general",
+      "title": "Salon stations — mirrors and chairs staggered",
+      "setup": "Some stations dark; product bottles sparse on ledge.",
+      "forbidden_model_behaviors": [
+        "Clone product bottles to fill ledges",
+        "Add ring lights not visible in source",
+        "Invent client reflections in empty chairs"
+      ],
+      "allowed_model_behaviors": [
+        "Sharpen mirror edges; WB for mixed sources",
+        "Denoise shadow under styling chair"
+      ],
+      "rule_refs": [
+        "no_new_light_fixtures",
+        "spatial_fidelity",
+        "people_identity_preserve",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "education_library_study_carrels",
+      "vertical": "education",
+      "room_type_hint": "general",
+      "title": "Library study zone — alternating carrel occupancy",
+      "setup": "Wood carrels with task lights; some seats empty; stacks visible at aisle end.",
+      "forbidden_model_behaviors": [
+        "Add laptops or books on empty carrels",
+        "Turn on task lamps that are off in the photograph",
+        "Remove fire-exit signage to clean the wall"
+      ],
+      "allowed_model_behaviors": [
+        "Even exposure along reading aisle; denoise shadow under shelves",
+        "Straighten verticals on stack ends and window mullions"
+      ],
+      "rule_refs": [
+        "no_new_light_fixtures",
+        "menu_truthfulness",
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "photographic_only"
+      ]
+    },
+    {
+      "id": "healthcare_exam_room_instruments_tray",
+      "vertical": "healthcare",
+      "room_type_hint": "general",
+      "title": "Exam room — instrument tray partial",
+      "setup": "Paper roll, sink, wall-mounted diagnostics; tray with few tools as shot.",
+      "forbidden_model_behaviors": [
+        "Populate tray with scalpels or syringes not in source",
+        "Add wall charts with legible fake PHI",
+        "Relocate exam table toward window"
+      ],
+      "allowed_model_behaviors": [
+        "Clinical white balance; lift shadow under table",
+        "Sharpen stainless sink without new reflections of invented objects"
+      ],
+      "rule_refs": [
+        "spatial_fidelity",
+        "menu_truthfulness",
+        "zero_additions_product_policy",
+        "photographic_only",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "industrial_loading_dock_bay_gap",
+      "vertical": "industrial",
+      "room_type_hint": "exterior",
+      "title": "Loading dock — one bay door open",
+      "setup": "Concrete apron; bumper pads; interior darkness beyond one opening.",
+      "forbidden_model_behaviors": [
+        "Park a truck or forklift in empty bay",
+        "Change number of dock levelers",
+        "Brick over an adjacent open bay to simplify composition"
+      ],
+      "allowed_model_behaviors": [
+        "Recover detail inside dark bay without adding vehicles",
+        "Straighten vertical dock door frames"
+      ],
+      "rule_refs": [
+        "doorway_opening_preservation",
+        "exterior_structure_lock",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "transportation_concourse_moving_walkway",
+      "vertical": "transportation",
+      "room_type_hint": "general",
+      "title": "Airport concourse — moving walkway edge",
+      "setup": "Rubber belt; glass balustrade; distant gate signage small in frame.",
+      "forbidden_model_behaviors": [
+        "Rewrite gate numbers or airline names on distant signs",
+        "Add travelers on empty belt sections",
+        "Insert ad posters on blank wall panels"
+      ],
+      "allowed_model_behaviors": [
+        "Sharpen balustrade lines; reduce glare on glass",
+        "Denoise ceiling baffles under mixed CCT"
+      ],
+      "rule_refs": [
+        "menu_truthfulness",
+        "people_identity_preserve",
+        "gap_empty_architecture_only",
+        "spatial_fidelity",
+        "zero_additions_product_policy"
+      ]
+    },
+    {
+      "id": "hospitality_ops_ballroom_kitchen_double_doors",
+      "vertical": "hospitality_ops",
+      "room_type_hint": "kitchen",
+      "title": "Banquet kitchen — double swing doors ajar",
+      "setup": "Stainless threshold; glimpse of service corridor; carts partial.",
+      "forbidden_model_behaviors": [
+        "Close doors that are open in source",
+        "Duplicate chafing stacks visible through opening",
+        "Add staff in corridor not photographed"
+      ],
+      "allowed_model_behaviors": [
+        "WB for fluorescent and warm spill from event space",
+        "Sharpen door hardware and kick plates"
+      ],
+      "rule_refs": [
+        "doorway_opening_preservation",
+        "food_plate_integrity",
+        "spatial_fidelity",
+        "people_identity_preserve",
+        "zero_additions_product_policy",
+        "no_new_light_fixtures"
+      ]
+    },
+    {
+      "id": "hotel_double_queen_pet_station_twin_shade_lamp",
+      "vertical": "hotels",
+      "room_type_hint": "bedroom",
+      "title": "Pet-friendly double queen — bowls on mat and dual-shade bedside lamp",
+      "setup": "Two queens share one nightstand; one lamp with two rectangular white shades on a single base; blue silicone mat with red and blue pet bowls on the floor by the dresser; small trash can near the hall opening; three-drawer dresser with TV.",
+      "forbidden_model_behaviors": [
+        "Remove or paint out the pet mat and bowls as clutter",
+        "Collapse the two rectangular lamp shades into one bell or tapered shade",
+        "Redraw the dresser as a six-drawer or two-column front if the source is a three-drawer unit",
+        "Remove the trash can to clean the corner",
+        "Swap pillow counts or bed skirts to fake a different housekeeping standard"
+      ],
+      "allowed_model_behaviors": [
+        "Brighten via exposure and tone using the existing lamp glow only",
+        "Sharpen headboard wood, bedding texture, and floor planks",
+        "Keep every bowl, mat, and casegood silhouette pixel-consistent with the source"
+      ],
+      "rule_refs": [
+        "lamp_shade_geometry_lock",
+        "floor_guest_amenity_preservation",
+        "casegood_drawer_layout_lock",
+        "no_new_light_fixtures",
+        "fixture_count_lock_preamble",
+        "spatial_fidelity",
+        "zero_additions_product_policy",
+        "listing_reframe_only",
+        "no_fake_symmetry"
+      ]
+    }
+  ]
+}

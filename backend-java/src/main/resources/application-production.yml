@@ -1,0 +1,9 @@
+# Activate with: SPRING_PROFILES_ACTIVE=production
+# Use with Postgres + Flyway: also set spring.profiles.include=postgres or SPRING_PROFILES_ACTIVE=production,postgres
+spring:
+  jpa:
+    show-sql: false
+logging:
+  level:
+    root: WARN
+    com.imagesystems: INFO

@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "postinstall": "patch-package",
-    "setup:backend": "cd backend && python3 -m venv .venv && ./.venv/bin/python -m pip install -U pip && ./.venv/bin/pip install -r requirements.txt",
+    "setup:backend": "node scripts/setup-backend.mjs",
     "check-backend": "node scripts/check-backend-venv.mjs",
     "backend": "node scripts/run-backend.mjs",
     "dev": "npm run check-backend && concurrently -n api,web -c blue,magenta \"LOCAL_DEV_MODE=true LOCAL_DEV_SKIP_UPSCALE=true npm run backend\" \"npm run dev --prefix frontend\"",
@@ -21,15 +21,10 @@
     "build": "npm run build -w frontend",
     "lint": "npm run lint -w frontend",
     "preview": "npm run preview -w frontend",
-    "install-frontend": "npm install",
-    "electron:dev": "cross-env ELECTRON_DEV=1 electron electron/main.cjs",
-    "electron:dev:wait": "cross-env ELECTRON_DEV=1 wait-on http://127.0.0.1:2020 && electron electron/main.cjs"
+    "install-frontend": "npm install"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
-    "cross-env": "^7.0.3",
-    "electron": "^33.4.0",
-    "patch-package": "^8.0.1",
-    "wait-on": "^8.0.1"
+    "patch-package": "^8.0.1"
   }
 }

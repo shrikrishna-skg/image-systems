@@ -23,13 +23,19 @@ venv/
 # Build output
 dist/
 build/
+target/
+backend-java/build/
+backend-java/.gradle/
+*.class
 .vite/
 
-# Local-only SQLite (LOCAL_DEV_MODE) + journal sidecars
-backend/local.db
-backend/local.db-shm
-backend/local.db-wal
-backend/*.db
+# Spring / credentials (never commit)
+application-secrets.properties
+**/application-secrets.properties
+
+# Local H2 + uploads (Spring dev)
+backend-java/data/
+backend-java/uploads/
 
 # Uploads
 uploads/

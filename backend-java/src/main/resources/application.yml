@@ -1,0 +1,94 @@
+spring:
+  flyway:
+    enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  application:
+    name: imagesystems
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DATABASE_URL:jdbc:h2:file:./data/imagesystems;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE}
+    username: ${DATABASE_USERNAME:sa}
+    password: ${DATABASE_PASSWORD:}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:12}
+      minimum-idle: ${HIKARI_MIN_IDLE:2}
+      connection-timeout: ${HIKARI_CONNECTION_TIMEOUT_MS:30000}
+      idle-timeout: ${HIKARI_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${HIKARI_MAX_LIFETIME_MS:1800000}
+      pool-name: imagesystems-pool
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE_MB:50}MB
+      max-request-size: ${MAX_REQUEST_SIZE_MB:200}MB
+
+server:
+  port: ${PORT:8000}
+
+logging:
+  level:
+    root: INFO
+    com.imagesystems: ${LOG_LEVEL_IMAGESYSTEMS:INFO}
+
+app:
+  app-env: ${APP_ENV:development}
+  app-secret-key: ${APP_SECRET_KEY:change-me}
+  api-key-encryption-key: ${API_KEY_ENCRYPTION_KEY:change-me}
+  supabase-jwt-secret: ${SUPABASE_JWT_SECRET:}
+  local-dev-mode: ${LOCAL_DEV_MODE:false}
+  local-dev-login-email: ${LOCAL_DEV_LOGIN_EMAIL:}
+  local-dev-login-password: ${LOCAL_DEV_LOGIN_PASSWORD:}
+  local-dev-skip-upscale: ${LOCAL_DEV_SKIP_UPSCALE:false}
+  local-dev-upscale-fallback-on-credit-error: ${LOCAL_DEV_UPSCALE_FALLBACK_ON_CREDIT_ERROR:true}
+  upload-dir: ${UPLOAD_DIR:./uploads}
+  max-upload-size-mb: ${MAX_UPLOAD_SIZE_MB:50}
+  max-files-per-upload-batch: ${MAX_FILES_PER_UPLOAD_BATCH:200}
+  persist-image-files-on-server: ${PERSIST_IMAGE_FILES_ON_SERVER:true}
+  ephemeral-image-grace-seconds: ${EPHEMERAL_IMAGE_GRACE_SECONDS:180}
+  cors-origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+    - http://localhost:2020
+    - http://127.0.0.1:2020
+    - http://localhost:2022
+    - http://127.0.0.1:2022
+    - http://localhost:8989
+    - http://127.0.0.1:8989
+    - http://localhost:3000
+    - http://127.0.0.1:3000
+    - http://localhost:3020
+    - http://127.0.0.1:3020
+    - http://localhost:4173
+    - http://127.0.0.1:4173
+  zyte-extract-url: ${ZYTE_EXTRACT_URL:https://api.zyte.com/v1/extract}
+  scrape-max-image-urls: ${SCRAPE_MAX_IMAGE_URLS:50000}
+  listing-prompt-blocks-enabled: ${LISTING_PROMPT_BLOCKS_ENABLED:true}
+
+---
+spring:
+  config.activate.on-profile: postgres
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/imagesystems}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
